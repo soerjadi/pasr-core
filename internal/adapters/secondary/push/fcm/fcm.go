@@ -61,7 +61,7 @@ func NewFromFile(ctx context.Context, credentialsFile string) (push.Pusher, erro
 	if creds.ProjectID == "" {
 		return nil, fmt.Errorf("fcm.NewFromFile: credentials file has no project_id")
 	}
-	client := newAuthClient(ctx, creds.TokenSource)
+	client := newAuthClient(creds.TokenSource)
 	client.Timeout = requestTimeout
 	return New(Config{ProjectID: creds.ProjectID, HTTPClient: client}), nil
 }
