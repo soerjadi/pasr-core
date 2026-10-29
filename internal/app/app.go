@@ -16,12 +16,14 @@ import (
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/media"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/middleware"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/mystore"
+	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/order"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/router"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/social"
 	"github.com/oemah/nusantara/core/internal/adapters/secondary/otp/logsender"
 	"github.com/oemah/nusantara/core/internal/adapters/secondary/push/fcm"
 	"github.com/oemah/nusantara/core/internal/adapters/secondary/push/logpusher"
 	adrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/ad"
+	cartrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/cart"
 	categoryrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/category"
 	devicerepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/device"
 	notificationrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/notification"
@@ -45,6 +47,7 @@ import (
 	catalogsvc "github.com/oemah/nusantara/core/internal/core/services/catalog"
 	identitysvc "github.com/oemah/nusantara/core/internal/core/services/identity"
 	notifysvc "github.com/oemah/nusantara/core/internal/core/services/notify"
+	ordersvc "github.com/oemah/nusantara/core/internal/core/services/ordering"
 	storemgmtsvc "github.com/oemah/nusantara/core/internal/core/services/storemgmt"
 	"github.com/oemah/nusantara/core/internal/infrastructure/config"
 	"github.com/oemah/nusantara/core/internal/infrastructure/db"
@@ -157,6 +160,8 @@ func New(ctx context.Context, cfg *config.Config, opts ...Options) (*App, error)
 		exec,
 	)
 
+	ordering := ordersvc.NewService(cartrepo.NewCartRepository(exec), opt.Storage)
+
 	adsService := adssvc.NewService(adrepo.NewAdRepository(exec), opt.Clock)
 
 	notify := notifysvc.NewService(
@@ -175,6 +180,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...Options) (*App, error)
 		Media:        media.NewHandler(catalog, cfg.Images.MaxBytes, files),
 		Me:           me.NewHandler(account),
 		MyStore:      mystore.NewHandler(storeMgmt),
+		Order:        order.NewHandler(ordering),
 		Social:       social.NewHandler(catalog),
 		Authenticate: middleware.Auth(identity.ParseAccessToken),
 		OptionalAuth: middleware.OptionalAuth(identity.ParseAccessToken),

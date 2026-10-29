@@ -11,6 +11,7 @@ import (
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/media"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/middleware"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/mystore"
+	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/order"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/social"
 )
 
@@ -22,6 +23,7 @@ type Handlers struct {
 	Media    *media.Handler
 	Me       *me.Handler
 	MyStore  *mystore.Handler
+	Order    *order.Handler
 	Social   *social.Handler
 	// Authenticate wraps a handler so it only runs for a valid bearer token.
 	Authenticate func(http.Handler) http.Handler
@@ -76,6 +78,10 @@ func New(h Handlers, allowedOrigins []string, ping func(*http.Request) error) ht
 		mux.Handle("GET /v1/me/store/products/{id}", h.Authenticate(http.HandlerFunc(h.MyStore.GetProduct)))
 		mux.Handle("PATCH /v1/me/store/products/{id}", h.Authenticate(http.HandlerFunc(h.MyStore.UpdateProduct)))
 		mux.Handle("DELETE /v1/me/store/products/{id}", h.Authenticate(http.HandlerFunc(h.MyStore.DeleteProduct)))
+	}
+
+	if h.Order != nil {
+		mux.HandleFunc("POST /v1/cart/validate", h.Order.ValidateCart)
 	}
 
 	if h.Social != nil {
