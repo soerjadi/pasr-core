@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"time"
 
+	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 
 	"github.com/oemah/nusantara/core/internal/core/domain"
@@ -21,7 +22,7 @@ import (
 const (
 	scope           = "https://www.googleapis.com/auth/firebase.messaging"
 	defaultEndpoint = "https://fcm.googleapis.com"
-	// requestTimeout bounds one FCM call, including token refresh through the default and authorized clients.
+	// requestTimeout bounds one FCM call, including token refresh.
 	requestTimeout = 10 * time.Second
 )
 
@@ -49,12 +50,15 @@ func New(c Config) push.Pusher {
 }
 
 // NewFromFile reads a service-account JSON file and returns a pusher whose requests carry its OAuth2 token.
-func NewFromFile(ctx context.Context, credentialsFile string) (push.Pusher, error) {
+func NewFromFile(_ context.Context, credentialsFile string) (push.Pusher, error) {
 	raw, err := os.ReadFile(credentialsFile)
 	if err != nil {
 		return nil, fmt.Errorf("fcm.NewFromFile read credentials: %w", err)
 	}
-	creds, err := google.CredentialsFromJSON(ctx, raw, scope)
+	// The token source keeps this context for every refresh, so it must outlive the caller's startup ctx;
+	// its own HTTP client bounds the token endpoint call.
+	tokenCtx := context.WithValue(context.Background(), oauth2.HTTPClient, &http.Client{Timeout: requestTimeout})
+	creds, err := google.CredentialsFromJSON(tokenCtx, raw, scope)
 	if err != nil {
 		return nil, fmt.Errorf("fcm.NewFromFile parse credentials: %w", err)
 	}
