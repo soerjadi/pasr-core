@@ -184,29 +184,55 @@ func TestDispatch_TwoDispatchersDoNotDoubleSend(t *testing.T) {
 	f := setup(t)
 	uid := seed.User(t, f.pool, "", "A")
 	f.device(t, uid, "tok-1")
-	const total = 40
+	const batch, total = 10, 20 // two full batches: each dispatcher must end up with exactly one of them
 	for i := 0; i < total; i++ {
 		f.enqueue(t, uid)
 	}
-	var mu sync.Mutex
-	f.push.SetDelay(func(context.Context) { mu.Lock(); mu.Unlock() })
+
+	// Each dispatcher blocks inside its first Send (rows still locked, transaction open) until the other
+	// dispatcher has also reached Send. With SKIP LOCKED both claim disjoint batches and proceed; with a plain
+	// FOR UPDATE the second one waits on the first one's locks and the rendezvous times out.
+	p := [2]*testapp.FakePusher{testapp.NewFakePusher(), testapp.NewFakePusher()}
+	reached := [2]chan struct{}{make(chan struct{}), make(chan struct{})}
+	var once [2]sync.Once
+	for d := 0; d < 2; d++ {
+		d := d
+		p[d].SetDelay(func(context.Context) {
+			once[d].Do(func() { close(reached[d]) })
+			select {
+			case <-reached[1-d]:
+			case <-time.After(5 * time.Second):
+				t.Errorf("dispatcher %d: the other dispatcher never claimed rows (claims are not disjoint)", d)
+			}
+		})
+	}
+
+	start := make(chan struct{})
 	var wg sync.WaitGroup
 	for d := 0; d < 2; d++ {
+		svc := notify.NewService(notification.NewNotificationRepository(f.exec), device.NewDeviceRepository(f.exec), p[d], f.exec)
+		notify.Tune(svc, batch, 0)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for i := 0; i < 20; i++ {
-				if err := f.svc().Dispatch(context.Background()); err != nil {
-					t.Error(err)
-					return
-				}
+			<-start
+			if err := svc.Dispatch(context.Background()); err != nil {
+				t.Error(err)
 			}
 		}()
 	}
+	close(start)
 	wg.Wait()
+
 	seen := map[int64]int{}
-	for _, s := range f.push.Sends() {
-		seen[s.Notification.ID]++
+	for d := 0; d < 2; d++ {
+		sends := p[d].Sends()
+		if len(sends) != batch {
+			t.Errorf("dispatcher %d sent %d notifications, want %d", d, len(sends), batch)
+		}
+		for _, s := range sends {
+			seen[s.Notification.ID]++
+		}
 	}
 	if len(seen) != total {
 		t.Fatalf("distinct notifications sent = %d, want %d", len(seen), total)
@@ -215,6 +241,9 @@ func TestDispatch_TwoDispatchersDoNotDoubleSend(t *testing.T) {
 		if n != 1 {
 			t.Fatalf("notification %d sent %d times", id, n)
 		}
+	}
+	if f.count(t, "sent_at IS NOT NULL") != total {
+		t.Fatal("not all notifications marked sent")
 	}
 }
 
