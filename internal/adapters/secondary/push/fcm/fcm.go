@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"golang.org/x/oauth2/google"
 
@@ -20,6 +21,8 @@ import (
 const (
 	scope           = "https://www.googleapis.com/auth/firebase.messaging"
 	defaultEndpoint = "https://fcm.googleapis.com"
+	// requestTimeout bounds one FCM call, including token refresh through the default and authorized clients.
+	requestTimeout = 10 * time.Second
 )
 
 // Config builds a pusher. Endpoint and HTTPClient exist so tests can point it at an httptest server;
@@ -40,7 +43,7 @@ func New(c Config) push.Pusher {
 		c.Endpoint = defaultEndpoint
 	}
 	if c.HTTPClient == nil {
-		c.HTTPClient = http.DefaultClient
+		c.HTTPClient = &http.Client{Timeout: requestTimeout}
 	}
 	return &pusher{url: c.Endpoint + "/v1/projects/" + c.ProjectID + "/messages:send", client: c.HTTPClient}
 }
@@ -59,6 +62,7 @@ func NewFromFile(ctx context.Context, credentialsFile string) (push.Pusher, erro
 		return nil, fmt.Errorf("fcm.NewFromFile: credentials file has no project_id")
 	}
 	client := newAuthClient(ctx, creds.TokenSource)
+	client.Timeout = requestTimeout
 	return New(Config{ProjectID: creds.ProjectID, HTTPClient: client}), nil
 }
 

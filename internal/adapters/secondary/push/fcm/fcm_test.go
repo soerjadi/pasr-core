@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/oemah/nusantara/core/internal/adapters/secondary/push/fcm"
 	"github.com/oemah/nusantara/core/internal/core/domain"
@@ -81,5 +82,23 @@ func TestFCM_UnregisteredAndErrors(t *testing.T) {
 				t.Fatalf("error leaks token: %v", err)
 			}
 		})
+	}
+}
+
+func TestFCM_HangingServerIsBoundedByClientTimeout(t *testing.T) {
+	release := make(chan struct{})
+	srv := newPusher(t, func(w http.ResponseWriter, r *http.Request) { <-release })
+	t.Cleanup(func() { close(release) })
+	p := fcm.New(fcm.Config{ProjectID: "demo", Endpoint: srv.URL, HTTPClient: &http.Client{Timeout: 100 * time.Millisecond}})
+	start := time.Now()
+	_, err := p.Send(context.Background(), "tok", note)
+	if err == nil || time.Since(start) > 2*time.Second {
+		t.Fatalf("err=%v after %v", err, time.Since(start))
+	}
+}
+
+func TestFCM_DefaultClientHasTimeout(t *testing.T) {
+	if fcm.DefaultTimeout() <= 0 {
+		t.Fatal("default client must have a timeout")
 	}
 }
