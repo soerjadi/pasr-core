@@ -9,8 +9,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/oemah/nusantara/core/internal/app"
+	"github.com/oemah/nusantara/core/internal/core/domain"
 	"github.com/oemah/nusantara/core/internal/infrastructure/config"
 	"github.com/oemah/nusantara/core/internal/testutil/pgtest"
 )
@@ -19,7 +21,25 @@ import (
 type Env struct {
 	t      *testing.T
 	Server *httptest.Server
+	Clock  *FakeClock     // the application clock; advance it to test expiry
+	OTP    *FakeOTPSender // records the latest code sent per phone
 }
+
+// Test secrets and the phones that receive the operator role.
+const (
+	AccessSecret    = "test-access-secret"
+	RefreshSecret   = "test-refresh-secret"
+	OTPSecret       = "test-otp-secret"
+	OperatorPhone   = "+6281999000001"
+	OperatorPhone2  = "+6281999000002"
+	defaultAccessTT = 15
+)
+
+// Option customises the application under test.
+type Option func(*config.Config)
+
+// WithConfig mutates the test config before the app is built.
+func WithConfig(fn func(*config.Config)) Option { return fn }
 
 // Resp is a recorded HTTP response.
 type Resp struct {
@@ -42,16 +62,25 @@ func Header(k, v string) Opt {
 }
 
 // New starts the real app against the shared test database. Skips under -short.
-func New(t *testing.T) *Env {
+func New(t *testing.T, opts ...Option) *Env {
 	t.Helper()
 	url := pgtest.URL(t)
+	clock := NewFakeClock(time.Now())
+	sender := NewFakeOTPSender()
 
 	cfg := &config.Config{
 		App:      config.App{Port: 0, Env: "test", ShutdownTimeout: 1},
 		Database: config.Database{URL: url, MaxConns: 5, MinConns: 0, MaxConnLifetime: 30, MaxConnIdleTime: 5},
-		JWT:      config.JWT{AccessSecret: "test-access-secret", RefreshSecret: "test-refresh-secret", AccessExpiry: 15, RefreshExpiry: 60},
+		JWT:      config.JWT{AccessSecret: AccessSecret, RefreshSecret: RefreshSecret, AccessExpiry: defaultAccessTT, RefreshExpiry: 60},
+		OTP: config.OTP{
+			Secret: OTPSecret, TTLSeconds: 300, MaxAttempts: 5, PhoneLimit: 100, IPLimit: 1000, WindowMinutes: 10, Sender: "log",
+		},
 	}
-	a, err := app.New(context.Background(), cfg)
+	cfg.App.OperatorPhones = []string{OperatorPhone, OperatorPhone2}
+	for _, o := range opts {
+		o(cfg)
+	}
+	a, err := app.New(context.Background(), cfg, app.Options{Clock: clock, OTPSender: sender})
 	if err != nil {
 		t.Fatalf("testapp: build app: %v", err)
 	}
@@ -60,7 +89,7 @@ func New(t *testing.T) *Env {
 		srv.Close()
 		_ = a.Shutdown(context.Background())
 	})
-	return &Env{t: t, Server: srv}
+	return &Env{t: t, Server: srv, Clock: clock, OTP: sender}
 }
 
 // Do sends a request; a non-nil body is JSON-encoded.
@@ -102,4 +131,33 @@ func (r *Resp) JSON(into any) {
 	if err := json.Unmarshal(r.Body, into); err != nil {
 		r.t.Fatalf("testapp: decode %s: %v", r.Body, err)
 	}
+}
+
+// SignIn logs the phone in through the real OTP flow and returns the session.
+func (e *Env) SignIn(phone string) domain.Session {
+	e.t.Helper()
+	norm, err := domain.NormalizePhone(phone)
+	if err != nil {
+		e.t.Fatalf("testapp: SignIn phone %q: %v", phone, err)
+	}
+	if r := e.Do(http.MethodPost, "/v1/auth/otp/request", map[string]string{"phone": norm}); r.Status != http.StatusNoContent {
+		e.t.Fatalf("testapp: request otp: status %d body %s", r.Status, r.Body)
+	}
+	code, ok := e.OTP.LastCode(norm)
+	if !ok {
+		e.t.Fatalf("testapp: no code was sent to %s", norm)
+	}
+	r := e.Do(http.MethodPost, "/v1/auth/otp/verify", map[string]string{"phone": norm, "code": code})
+	if r.Status != http.StatusOK {
+		e.t.Fatalf("testapp: verify otp: status %d body %s", r.Status, r.Body)
+	}
+	var s domain.Session
+	r.JSON(&s)
+	return s
+}
+
+// SignInOperator signs in a phone configured as an operator (OperatorPhone or OperatorPhone2 by default).
+func (e *Env) SignInOperator(phone string) domain.Session {
+	e.t.Helper()
+	return e.SignIn(phone)
 }
