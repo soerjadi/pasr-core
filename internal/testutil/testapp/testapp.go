@@ -1,0 +1,105 @@
+// Package testapp builds the real application on a throwaway PostgreSQL behind an httptest server.
+package testapp
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/oemah/nusantara/core/internal/app"
+	"github.com/oemah/nusantara/core/internal/infrastructure/config"
+	"github.com/oemah/nusantara/core/internal/testutil/pgtest"
+)
+
+// Env is a running application under test.
+type Env struct {
+	t      *testing.T
+	Server *httptest.Server
+}
+
+// Resp is a recorded HTTP response.
+type Resp struct {
+	Status int
+	Body   []byte
+	t      *testing.T
+}
+
+// Opt customises a request.
+type Opt func(*http.Request)
+
+// Bearer sets the Authorization header.
+func Bearer(token string) Opt {
+	return func(r *http.Request) { r.Header.Set("Authorization", "Bearer "+token) }
+}
+
+// Header sets an arbitrary request header.
+func Header(k, v string) Opt {
+	return func(r *http.Request) { r.Header.Set(k, v) }
+}
+
+// New starts the real app against the shared test database. Skips under -short.
+func New(t *testing.T) *Env {
+	t.Helper()
+	url := pgtest.URL(t)
+
+	cfg := &config.Config{
+		App:      config.App{Port: 0, Env: "test", ShutdownTimeout: 1},
+		Database: config.Database{URL: url, MaxConns: 5, MinConns: 0, MaxConnLifetime: 30, MaxConnIdleTime: 5},
+		JWT:      config.JWT{AccessSecret: "test-access-secret", RefreshSecret: "test-refresh-secret", AccessExpiry: 15, RefreshExpiry: 60},
+	}
+	a, err := app.New(context.Background(), cfg)
+	if err != nil {
+		t.Fatalf("testapp: build app: %v", err)
+	}
+	srv := httptest.NewServer(a.Router())
+	t.Cleanup(func() {
+		srv.Close()
+		_ = a.Shutdown(context.Background())
+	})
+	return &Env{t: t, Server: srv}
+}
+
+// Do sends a request; a non-nil body is JSON-encoded.
+func (e *Env) Do(method, path string, body any, opts ...Opt) *Resp {
+	e.t.Helper()
+	var rd io.Reader
+	if body != nil {
+		b, err := json.Marshal(body)
+		if err != nil {
+			e.t.Fatalf("testapp: marshal body: %v", err)
+		}
+		rd = bytes.NewReader(b)
+	}
+	req, err := http.NewRequest(method, e.Server.URL+path, rd)
+	if err != nil {
+		e.t.Fatalf("testapp: new request: %v", err)
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	for _, o := range opts {
+		o(req)
+	}
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		e.t.Fatalf("testapp: %s %s: %v", method, path, err)
+	}
+	defer res.Body.Close()
+	b, err := io.ReadAll(res.Body)
+	if err != nil {
+		e.t.Fatalf("testapp: read body: %v", err)
+	}
+	return &Resp{Status: res.StatusCode, Body: b, t: e.t}
+}
+
+// JSON decodes the response body into into.
+func (r *Resp) JSON(into any) {
+	r.t.Helper()
+	if err := json.Unmarshal(r.Body, into); err != nil {
+		r.t.Fatalf("testapp: decode %s: %v", r.Body, err)
+	}
+}
