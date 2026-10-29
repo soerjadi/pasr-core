@@ -99,3 +99,10 @@ type ProductQuery struct {
 	BeforeID   int64
 	Limit      int
 }
+
+// FavoriteRecord is a visible product in a user's favorites; FavoriteID is the favorites row id
+// the list cursor is built from.
+type FavoriteRecord struct {
+	FavoriteID int64
+	Product    ProductRecord
+}
