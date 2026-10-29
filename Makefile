@@ -1,4 +1,4 @@
-.PHONY: run build tidy test lint fmt-check verify migrate-up migrate-down
+.PHONY: run build tidy test test-short lint fmt-check verify migrate-up migrate-down
 
 DB_URL ?= postgres://nusantara:nusantara@localhost:5432/nusantara?sslmode=disable
 
@@ -13,6 +13,9 @@ tidy:
 
 test:
 	go test -race ./...
+
+test-short:
+	go test -race -short ./...
 
 lint:
 	golangci-lint run
