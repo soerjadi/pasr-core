@@ -12,4 +12,9 @@ const (
 		FROM users
 		WHERE id = $1
 	`
+	updateNameQuery = `
+		UPDATE users SET name = $2
+		WHERE id = $1
+		RETURNING id, phone, name, role
+	`
 )
