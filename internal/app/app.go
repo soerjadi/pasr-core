@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/ads"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/auth"
 	catalogrest "github.com/oemah/nusantara/core/internal/adapters/primary/rest/catalog"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/category"
@@ -18,6 +19,7 @@ import (
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/router"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/social"
 	"github.com/oemah/nusantara/core/internal/adapters/secondary/otp/logsender"
+	adrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/ad"
 	categoryrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/category"
 	devicerepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/device"
 	otprepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/otp"
@@ -35,6 +37,7 @@ import (
 	"github.com/oemah/nusantara/core/internal/core/ports/secondary/otp"
 	"github.com/oemah/nusantara/core/internal/core/ports/secondary/storage"
 	accountsvc "github.com/oemah/nusantara/core/internal/core/services/account"
+	adssvc "github.com/oemah/nusantara/core/internal/core/services/ads"
 	catalogsvc "github.com/oemah/nusantara/core/internal/core/services/catalog"
 	identitysvc "github.com/oemah/nusantara/core/internal/core/services/identity"
 	storemgmtsvc "github.com/oemah/nusantara/core/internal/core/services/storemgmt"
@@ -140,8 +143,11 @@ func New(ctx context.Context, cfg *config.Config, opts ...Options) (*App, error)
 		exec,
 	)
 
+	adsService := adssvc.NewService(adrepo.NewAdRepository(exec), opt.Clock)
+
 	files, _ := opt.Storage.(media.FileServer) // only the local driver serves its own files
 	h := router.Handlers{
+		Ads:          ads.NewHandler(adsService),
 		Auth:         auth.NewHandler(identity),
 		Category:     category.NewHandler(catalog),
 		Catalog:      catalogrest.NewHandler(catalog),

@@ -3,6 +3,7 @@ package router
 import (
 	"net/http"
 
+	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/ads"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/auth"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/catalog"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/category"
@@ -14,6 +15,7 @@ import (
 )
 
 type Handlers struct {
+	Ads      *ads.Handler
 	Auth     *auth.Handler
 	Category *category.Handler
 	Catalog  *catalog.Handler
@@ -52,6 +54,10 @@ func New(h Handlers, allowedOrigins []string, ping func(*http.Request) error) ht
 		mux.Handle("GET /v1/products/{productId}", h.OptionalAuth(http.HandlerFunc(h.Catalog.GetProduct)))
 		mux.Handle("GET /v1/sellers/{sellerId}", h.OptionalAuth(http.HandlerFunc(h.Catalog.GetSeller)))
 		mux.HandleFunc("GET /v1/sellers/{sellerId}/reviews", h.Catalog.ListSellerReviews)
+	}
+
+	if h.Ads != nil {
+		mux.HandleFunc("GET /v1/ads", h.Ads.List)
 	}
 
 	if h.Me != nil {
