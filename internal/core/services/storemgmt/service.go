@@ -44,6 +44,10 @@ func notFound() error {
 	return domain.NewError(domain.ErrNotFound, "NOT_FOUND", "product not found")
 }
 
+func errNoStore() error {
+	return domain.NewError(domain.ErrConflict, "NO_STORE", "you do not have a store yet")
+}
+
 // storeOf finds the caller's store or fails with 409 NO_STORE.
 func (s *service) storeOf(ctx context.Context, ownerID int64) (domain.StoreRef, error) {
 	ref, err := s.stores.GetRefByOwner(ctx, ownerID)
@@ -51,7 +55,7 @@ func (s *service) storeOf(ctx context.Context, ownerID int64) (domain.StoreRef, 
 		return domain.StoreRef{}, err
 	}
 	if ref == nil {
-		return domain.StoreRef{}, domain.NewError(domain.ErrConflict, "NO_STORE", "you do not have a store yet")
+		return domain.StoreRef{}, errNoStore()
 	}
 	return *ref, nil
 }

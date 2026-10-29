@@ -23,4 +23,13 @@ type StoreManagementService interface {
 	UpdateMyProduct(ctx context.Context, ownerID, productID int64, patch domain.ProductPatch) (domain.SellerProduct, error)
 	// DeleteMyProduct soft-deletes the product and removes it from every favorites list.
 	DeleteMyProduct(ctx context.Context, ownerID, productID int64) error
+
+	// GetMyStore returns the caller's full store profile; a suspended store can still be read.
+	GetMyStore(ctx context.Context, ownerID int64) (domain.MyStore, error)
+	// UpdateMyStore applies the non-nil fields. Empty required fields, a whatsapp that does not
+	// normalise to E.164, hours that are not seven valid days and a photoId that is not the caller's
+	// unattached upload are domain.ErrValidationFailed. Editing never changes the verification status.
+	UpdateMyStore(ctx context.Context, ownerID int64, patch domain.StorePatch) (domain.MyStore, error)
+	// SetMyStoreOpen stores the store's open flag.
+	SetMyStoreOpen(ctx context.Context, ownerID int64, open bool) error
 }
