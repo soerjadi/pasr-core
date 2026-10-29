@@ -1,6 +1,7 @@
 package identity
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -27,6 +28,9 @@ type tokenClaims struct {
 }
 
 func (t *Tokens) Issue(c domain.Claims) (string, time.Time, error) {
+	if len(t.secret) == 0 {
+		return "", time.Time{}, errors.New("identity.Tokens.Issue: empty signing secret")
+	}
 	now := t.clock.Now()
 	exp := now.Add(t.ttl)
 	tc := tokenClaims{
@@ -46,6 +50,9 @@ func (t *Tokens) Issue(c domain.Claims) (string, time.Time, error) {
 
 // Parse accepts only unexpired HS256 tokens signed with the secret; every failure is ErrUnauthorized.
 func (t *Tokens) Parse(token string) (domain.Claims, error) {
+	if len(t.secret) == 0 {
+		return domain.Claims{}, domain.ErrUnauthorized
+	}
 	var tc tokenClaims
 	_, err := jwt.ParseWithClaims(token, &tc,
 		func(*jwt.Token) (any, error) { return t.secret, nil },

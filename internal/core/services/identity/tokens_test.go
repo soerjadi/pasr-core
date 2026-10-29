@@ -67,3 +67,17 @@ func TestTokens_AlgNoneRejected(t *testing.T) {
 		t.Fatalf("garbage: want ErrUnauthorized, got %v", err)
 	}
 }
+
+func TestTokens_EmptySecretNeverSigns(t *testing.T) {
+	tk := NewTokens("", time.Minute, &fixedClock{epoch})
+	if _, _, err := tk.Issue(domain.Claims{UserID: 1, Role: domain.RoleBuyer}); err == nil {
+		t.Fatal("Issue with empty secret must fail")
+	}
+	// A token signed with an empty key must not verify either.
+	forged, _ := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub": "1", "role": "buyer", "exp": epoch.Add(time.Hour).Unix(),
+	}).SignedString([]byte(""))
+	if _, err := tk.Parse(forged); !errors.Is(err, domain.ErrUnauthorized) {
+		t.Fatalf("Parse with empty secret: %v", err)
+	}
+}
