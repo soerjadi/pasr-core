@@ -49,6 +49,7 @@ func WithConfig(fn func(*config.Config)) Option { return fn }
 // Resp is a recorded HTTP response.
 type Resp struct {
 	Status int
+	Header http.Header
 	Body   []byte
 	t      *testing.T
 }
@@ -135,7 +136,7 @@ func (e *Env) Do(method, path string, body any, opts ...Opt) *Resp {
 	if err != nil {
 		e.t.Fatalf("testapp: read body: %v", err)
 	}
-	return &Resp{Status: res.StatusCode, Body: b, t: e.t}
+	return &Resp{Status: res.StatusCode, Header: res.Header, Body: b, t: e.t}
 }
 
 // JSON decodes the response body into into.
@@ -214,5 +215,5 @@ func (e *Env) DoFile(method, path, field, filename, contentType string, data []b
 	if err != nil {
 		e.t.Fatalf("testapp: read body: %v", err)
 	}
-	return &Resp{Status: res.StatusCode, Body: b, t: e.t}
+	return &Resp{Status: res.StatusCode, Header: res.Header, Body: b, t: e.t}
 }
