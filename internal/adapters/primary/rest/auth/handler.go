@@ -75,7 +75,10 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	var req refreshRequest
-	if !decode(w, r, &req) {
+	// Logout is idempotent: an empty or malformed body revokes nothing and still gets 204.
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.RefreshToken == "" {
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 	if err := h.identity.Logout(r.Context(), req.RefreshToken); err != nil {
