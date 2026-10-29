@@ -1,0 +1,36 @@
+[app]
+port = 8080
+env = "development"
+shutdown_timeout = 10
+allowed_origins = ["*"]
+
+[database]
+url = "postgres://nusantara:nusantara@localhost:5432/nusantara?sslmode=disable"
+max_conns = 5
+min_conns = 1
+max_conn_lifetime = 30
+max_conn_idle_time = 5
+trace_enabled = true
+trace_include_sql = false
+# WARN: trace_include_params leaks passwords/tokens/PII into traces. Keep false in production.
+trace_include_params = false
+# Maximum length of SQL query text in spans. 0 = no truncation.
+trace_max_query_len = 500
+
+[jwt]
+access_secret = "change-me"
+refresh_secret = "change-me-too"
+access_expiry = 15
+refresh_expiry = 43200
+
+[log]
+level = "debug"
+file_path = "logs/app.log"
+max_size = 50
+max_backups = 3
+max_age = 28
+
+[tracing]
+enabled = false
+endpoint = "localhost:4317"
+service_name = "nusantara-core"
