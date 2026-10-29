@@ -147,14 +147,14 @@ func TestListProducts_SearchCaseInsensitiveAndEscapesWildcards(t *testing.T) {
 	percent := seed.Product(t, db, seed.ProductOpts{StoreID: s, Name: "Diskon 50% Madu"})
 	under := seed.Product(t, db, seed.ProductOpts{StoreID: s, Name: "Kue_Kering"})
 	seed.Product(t, db, seed.ProductOpts{StoreID: s, Name: "Kue Kering"})
-	slash := seed.Product(t, db, seed.ProductOpts{StoreID: s, Name: `Es\Teh`})
+	slash := seed.Product(t, db, seed.ProductOpts{StoreID: s, Name: `Es\Kopi`})
 
 	cases := map[string][]int64{
 		"TEMPE":  {tempe},
 		"tEmPe":  {tempe},
 		"50%":    {percent},
 		"e_k":    {under},
-		"s\\t":   {slash},
+		"s\\k":   {slash},
 		"%%":     nil,
 		"__":     nil,
 		"ue_ke":  {under},
