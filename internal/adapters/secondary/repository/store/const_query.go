@@ -16,4 +16,5 @@ const (
 		) o
 		WHERE s.owner_id = $1
 	`
+	getRefByOwnerQuery = `SELECT id, category_id FROM stores WHERE owner_id = $1`
 )

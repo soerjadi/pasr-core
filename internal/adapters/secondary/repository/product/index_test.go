@@ -55,3 +55,39 @@ func TestBuildListQuery_FiltersHaveOrderedIndexes(t *testing.T) {
 		}
 	}
 }
+
+// The seller's own list walks (store_id, id DESC) with and without a status filter.
+func TestBuildListOwnedQuery_UsesStoreIndex(t *testing.T) {
+	pool := pgtest.Pool(t)
+	store, _ := seed.Store(t, pool, seed.StoreOpts{})
+	seed.Product(t, pool, seed.ProductOpts{StoreID: store})
+
+	ctx := context.Background()
+	conn, err := pool.Acquire(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Release()
+	if _, err := conn.Exec(ctx, `SET enable_seqscan = off; SET enable_bitmapscan = off`); err != nil {
+		t.Fatal(err)
+	}
+	for _, status := range []domain.ProductStatus{"", domain.ProductHidden} {
+		sql, args := buildListOwnedQuery(domain.SellerProductQuery{StoreID: store, Status: status, BeforeID: 100, Limit: 21})
+		rows, err := conn.Query(ctx, "EXPLAIN "+sql, args...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var plan strings.Builder
+		for rows.Next() {
+			var line string
+			if err := rows.Scan(&line); err != nil {
+				t.Fatal(err)
+			}
+			plan.WriteString(line + "\n")
+		}
+		rows.Close()
+		if !strings.Contains(plan.String(), "products_store_id_idx") || strings.Contains(plan.String(), "Sort") {
+			t.Errorf("status %q: plan:\n%s", status, plan.String())
+		}
+	}
+}

@@ -13,4 +13,6 @@ type StoreRepository interface {
 	// GetSummaryByOwner returns nil, nil when the user has no store. NewOrderCount and AcceptBy
 	// come from the owner's seller orders in status CREATED.
 	GetSummaryByOwner(ctx context.Context, ownerID int64) (*domain.StoreSummary, error)
+	// GetRefByOwner returns the owner's store id and category, or nil, nil without a store.
+	GetRefByOwner(ctx context.Context, ownerID int64) (*domain.StoreRef, error)
 }
