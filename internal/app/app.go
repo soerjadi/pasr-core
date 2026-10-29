@@ -18,8 +18,11 @@ import (
 	categoryrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/category"
 	devicerepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/device"
 	otprepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/otp"
+	productrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/product"
+	reviewrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/review"
 	sessionrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/session"
 	storerepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/store"
+	storefrontrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/storefront"
 	uploadrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/upload"
 	userrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/user"
 	localstorage "github.com/oemah/nusantara/core/internal/adapters/secondary/storage/local"
@@ -83,6 +86,9 @@ func New(ctx context.Context, cfg *config.Config, opts ...Options) (*App, error)
 	exec := db.NewExecutor(pool)
 	catalog := catalogsvc.NewService(
 		categoryrepo.NewCategoryRepository(exec),
+		productrepo.NewProductRepository(exec),
+		storefrontrepo.NewStorefrontRepository(exec),
+		reviewrepo.NewReviewRepository(exec),
 		uploadrepo.NewUploadRepository(exec),
 		opt.Storage,
 		catalogsvc.Config{MaxImageBytes: cfg.Images.MaxBytes, MaxImagePixels: cfg.Images.MaxPixels},

@@ -21,6 +21,9 @@ const maxConcurrentImages = 2
 
 type service struct {
 	categories repository.CategoryRepository
+	products   repository.ProductRepository
+	storefront repository.StorefrontRepository
+	reviews    repository.ReviewRepository
 	uploads    repository.UploadRepository
 	storage    storage.ObjectStorage
 	cfg        Config
@@ -28,12 +31,20 @@ type service struct {
 	slots      chan struct{}
 }
 
-func NewService(categories repository.CategoryRepository, uploads repository.UploadRepository, store storage.ObjectStorage, cfg Config, clock domain.Clock) services.CatalogService {
+func NewService(
+	categories repository.CategoryRepository,
+	products repository.ProductRepository,
+	storefront repository.StorefrontRepository,
+	reviews repository.ReviewRepository,
+	uploads repository.UploadRepository, store storage.ObjectStorage,
+	cfg Config,
+	clock domain.Clock,
+) services.CatalogService {
 	if cfg.OrphanAge <= 0 {
 		cfg.OrphanAge = 24 * time.Hour
 	}
 	return &service{
-		categories: categories, uploads: uploads, storage: store, cfg: cfg, clock: clock,
+		categories: categories, products: products, storefront: storefront, reviews: reviews, uploads: uploads, storage: store, cfg: cfg, clock: clock,
 		slots: make(chan struct{}, maxConcurrentImages),
 	}
 }
