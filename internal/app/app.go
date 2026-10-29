@@ -15,9 +15,13 @@ import (
 	categoryrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/category"
 	otprepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/otp"
 	sessionrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/session"
+	uploadrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/upload"
 	userrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/user"
+	localstorage "github.com/oemah/nusantara/core/internal/adapters/secondary/storage/local"
+	s3storage "github.com/oemah/nusantara/core/internal/adapters/secondary/storage/s3"
 	"github.com/oemah/nusantara/core/internal/core/domain"
 	"github.com/oemah/nusantara/core/internal/core/ports/secondary/otp"
+	"github.com/oemah/nusantara/core/internal/core/ports/secondary/storage"
 	catalogsvc "github.com/oemah/nusantara/core/internal/core/services/catalog"
 	identitysvc "github.com/oemah/nusantara/core/internal/core/services/identity"
 	"github.com/oemah/nusantara/core/internal/infrastructure/config"
@@ -28,6 +32,7 @@ import (
 type Options struct {
 	Clock     domain.Clock
 	OTPSender otp.Sender
+	Storage   storage.ObjectStorage // defaults to the adapter chosen by cfg.Storage.Driver
 }
 
 // App is the composition root: it builds repositories, services and handlers and owns their resources.
@@ -54,13 +59,27 @@ func New(ctx context.Context, cfg *config.Config, opts ...Options) (*App, error)
 		opt.OTPSender = logsender.New(cfg.App.Env)
 	}
 
+	if opt.Storage == nil {
+		st, err := newStorage(cfg.Storage)
+		if err != nil {
+			return nil, err
+		}
+		opt.Storage = st
+	}
+
 	pool, err := db.New(ctx, cfg.Database)
 	if err != nil {
 		return nil, err
 	}
 
 	exec := db.NewExecutor(pool)
-	catalog := catalogsvc.NewService(categoryrepo.NewCategoryRepository(exec))
+	catalog := catalogsvc.NewService(
+		categoryrepo.NewCategoryRepository(exec),
+		uploadrepo.NewUploadRepository(exec),
+		opt.Storage,
+		catalogsvc.Config{MaxImageBytes: cfg.Images.MaxBytes, MaxImagePixels: cfg.Images.MaxPixels},
+		opt.Clock,
+	)
 	identity, err := identitysvc.NewService(
 		userrepo.NewUserRepository(exec),
 		otprepo.NewOTPRepository(exec),
@@ -99,4 +118,17 @@ func (a *App) Router() http.Handler { return a.handler }
 func (a *App) Shutdown(context.Context) error {
 	a.pool.Close()
 	return nil
+}
+
+func newStorage(cfg config.Storage) (storage.ObjectStorage, error) {
+	switch cfg.Driver {
+	case "local", "":
+		return localstorage.New(cfg.LocalDir, cfg.PublicBaseURL)
+	case "s3":
+		return s3storage.New(s3storage.Config{
+			Endpoint: cfg.S3Endpoint, Bucket: cfg.S3Bucket, AccessKey: cfg.S3AccessKey,
+			SecretKey: cfg.S3SecretKey, PublicBaseURL: cfg.PublicBaseURL,
+		})
+	}
+	return nil, fmt.Errorf("app: unknown storage driver %q", cfg.Driver)
 }

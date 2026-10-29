@@ -7,9 +7,13 @@ import (
 	"testing"
 
 	"github.com/oemah/nusantara/core/internal/core/domain"
+	"github.com/oemah/nusantara/core/internal/core/ports/services"
 )
 
-type stubCatalog struct{ items []domain.Category }
+type stubCatalog struct {
+	services.CatalogService
+	items []domain.Category
+}
 
 func (s stubCatalog) ListCategories(context.Context) ([]domain.Category, error) { return s.items, nil }
 

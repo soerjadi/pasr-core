@@ -8,9 +8,10 @@ import (
 
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/category"
 	"github.com/oemah/nusantara/core/internal/core/domain"
+	"github.com/oemah/nusantara/core/internal/core/ports/services"
 )
 
-type stubCatalog struct{}
+type stubCatalog struct{ services.CatalogService }
 
 func (stubCatalog) ListCategories(context.Context) ([]domain.Category, error) {
 	return []domain.Category{{ID: 1, Name: "Makanan", IconKey: "food"}}, nil
