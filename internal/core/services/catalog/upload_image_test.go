@@ -83,7 +83,7 @@ func (c fixedClock) Now() time.Time { return c.t }
 
 func newSvc(maxBytes, maxPixels int64) (*service, *fakeUploads, *memStore) {
 	up, st := &fakeUploads{}, newMemStore()
-	s := NewService(fakeCategories{}, nil, nil, nil, up, st, Config{MaxImageBytes: maxBytes, MaxImagePixels: maxPixels}, fixedClock{time.Date(2026, 10, 29, 12, 0, 0, 0, time.UTC)})
+	s := NewService(fakeCategories{}, nil, nil, nil, nil, up, st, Config{MaxImageBytes: maxBytes, MaxImagePixels: maxPixels}, fixedClock{time.Date(2026, 10, 29, 12, 0, 0, 0, time.UTC)})
 	return s.(*service), up, st
 }
 
