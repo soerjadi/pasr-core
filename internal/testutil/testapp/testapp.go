@@ -23,6 +23,7 @@ type Env struct {
 	Server   *httptest.Server
 	Clock    *FakeClock     // the application clock; advance it to test expiry
 	OTP      *FakeOTPSender // records the latest code sent per phone
+	Storage  *MemStorage    // in-memory object storage injected into the app
 	opPhones map[string]bool
 }
 
@@ -68,6 +69,7 @@ func New(t *testing.T, opts ...Option) *Env {
 	url := pgtest.URL(t)
 	clock := NewFakeClock(time.Now())
 	sender := NewFakeOTPSender()
+	store := NewMemStorage()
 
 	cfg := &config.Config{
 		App:      config.App{Port: 0, Env: "test", ShutdownTimeout: 1},
@@ -76,12 +78,13 @@ func New(t *testing.T, opts ...Option) *Env {
 		OTP: config.OTP{
 			Secret: OTPSecret, TTLSeconds: 300, MaxAttempts: 5, PhoneLimit: 100, IPLimit: 1000, WindowMinutes: 10, Sender: "log",
 		},
+		Images: config.Images{MaxBytes: 1 << 20, MaxPixels: 4_000_000},
 	}
 	cfg.App.OperatorPhones = []string{OperatorPhone, OperatorPhone2}
 	for _, o := range opts {
 		o(cfg)
 	}
-	a, err := app.New(context.Background(), cfg, app.Options{Clock: clock, OTPSender: sender})
+	a, err := app.New(context.Background(), cfg, app.Options{Clock: clock, OTPSender: sender, Storage: store})
 	if err != nil {
 		t.Fatalf("testapp: build app: %v", err)
 	}
@@ -96,7 +99,7 @@ func New(t *testing.T, opts ...Option) *Env {
 			ops[n] = true
 		}
 	}
-	return &Env{t: t, Server: srv, Clock: clock, OTP: sender, opPhones: ops}
+	return &Env{t: t, Server: srv, Clock: clock, OTP: sender, Storage: store, opPhones: ops}
 }
 
 // Do sends a request; a non-nil body is JSON-encoded.
