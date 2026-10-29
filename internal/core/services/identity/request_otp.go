@@ -23,34 +23,44 @@ func (s *service) RequestOTP(ctx context.Context, phone, ip string) error {
 	now := s.clock.Now()
 	since := now.Add(-s.cfg.OTPWindow)
 
-	byPhone, err := s.otps.CountByPhoneSince(ctx, norm, since)
-	if err != nil {
-		tracer.RecordError(span, err)
-		return err
-	}
-	byIP, err := s.otps.CountByIPSince(ctx, ip, since)
-	if err != nil {
-		tracer.RecordError(span, err)
-		return err
-	}
-	if byPhone >= s.cfg.OTPPhoneLimit || byIP >= s.cfg.OTPIPLimit {
-		err := errRateLimited()
-		tracer.RecordError(span, err)
-		return err
-	}
-
 	code, err := newCode()
 	if err != nil {
 		tracer.RecordError(span, err)
 		return err
 	}
+	limited := false
 	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
+		// Serialise concurrent requests per phone and per IP (fixed order: phone, then IP) so the
+		// counts below cannot be raced past the limit.
+		if err := s.otps.Lock(ctx, "otp:phone:"+norm); err != nil {
+			return err
+		}
+		if err := s.otps.Lock(ctx, "otp:ip:"+ip); err != nil {
+			return err
+		}
+		byPhone, err := s.otps.CountByPhoneSince(ctx, norm, since)
+		if err != nil {
+			return err
+		}
+		byIP, err := s.otps.CountByIPSince(ctx, ip, since)
+		if err != nil {
+			return err
+		}
+		if byPhone >= s.cfg.OTPPhoneLimit || byIP >= s.cfg.OTPIPLimit {
+			limited = true
+			return nil
+		}
 		if err := s.otps.InvalidateActive(ctx, norm, now); err != nil {
 			return err
 		}
 		return s.otps.Create(ctx, norm, ip, hashHMAC(s.cfg.OTPSecret, norm+":"+code), now.Add(s.cfg.OTPTTL), now)
 	})
 	if err != nil {
+		tracer.RecordError(span, err)
+		return err
+	}
+	if limited {
+		err := errRateLimited()
 		tracer.RecordError(span, err)
 		return err
 	}

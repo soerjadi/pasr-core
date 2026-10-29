@@ -1,6 +1,7 @@
 package otp
 
 const (
+	lockQuery   = `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`
 	createQuery = `
 		INSERT INTO otp_codes (phone, ip, code_hash, expires_at, created_at)
 		VALUES ($1, $2, $3, $4, $5)
