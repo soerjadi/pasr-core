@@ -10,13 +10,16 @@ import (
 
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/auth"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/category"
+	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/me"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/media"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/middleware"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/router"
 	"github.com/oemah/nusantara/core/internal/adapters/secondary/otp/logsender"
 	categoryrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/category"
+	devicerepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/device"
 	otprepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/otp"
 	sessionrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/session"
+	storerepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/store"
 	uploadrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/upload"
 	userrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/user"
 	localstorage "github.com/oemah/nusantara/core/internal/adapters/secondary/storage/local"
@@ -24,6 +27,7 @@ import (
 	"github.com/oemah/nusantara/core/internal/core/domain"
 	"github.com/oemah/nusantara/core/internal/core/ports/secondary/otp"
 	"github.com/oemah/nusantara/core/internal/core/ports/secondary/storage"
+	accountsvc "github.com/oemah/nusantara/core/internal/core/services/account"
 	catalogsvc "github.com/oemah/nusantara/core/internal/core/services/catalog"
 	identitysvc "github.com/oemah/nusantara/core/internal/core/services/identity"
 	"github.com/oemah/nusantara/core/internal/infrastructure/config"
@@ -108,11 +112,20 @@ func New(ctx context.Context, cfg *config.Config, opts ...Options) (*App, error)
 		return nil, err
 	}
 
+	account := accountsvc.NewService(
+		userrepo.NewUserRepository(exec),
+		storerepo.NewStoreRepository(exec),
+		devicerepo.NewDeviceRepository(exec),
+		uploadrepo.NewUploadRepository(exec),
+		exec,
+	)
+
 	files, _ := opt.Storage.(media.FileServer) // only the local driver serves its own files
 	h := router.Handlers{
 		Auth:         auth.NewHandler(identity),
 		Category:     category.NewHandler(catalog),
 		Media:        media.NewHandler(catalog, cfg.Images.MaxBytes, files),
+		Me:           me.NewHandler(account),
 		Authenticate: middleware.Auth(identity.ParseAccessToken),
 	}
 	ping := func(r *http.Request) error { return pool.Ping(r.Context()) }

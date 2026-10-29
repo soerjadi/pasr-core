@@ -5,6 +5,7 @@ import (
 
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/auth"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/category"
+	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/me"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/media"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/middleware"
 )
@@ -13,6 +14,7 @@ type Handlers struct {
 	Auth     *auth.Handler
 	Category *category.Handler
 	Media    *media.Handler
+	Me       *me.Handler
 	// Authenticate wraps a handler so it only runs for a valid bearer token.
 	Authenticate func(http.Handler) http.Handler
 }
@@ -36,6 +38,13 @@ func New(h Handlers, allowedOrigins []string, ping func(*http.Request) error) ht
 	mux.HandleFunc("POST /v1/auth/logout", h.Auth.Logout)
 
 	mux.HandleFunc("GET /v1/categories", h.Category.List)
+
+	if h.Me != nil {
+		mux.Handle("GET /v1/me", h.Authenticate(http.HandlerFunc(h.Me.Get)))
+		mux.Handle("PATCH /v1/me", h.Authenticate(http.HandlerFunc(h.Me.Update)))
+		mux.Handle("PUT /v1/me/devices", h.Authenticate(http.HandlerFunc(h.Me.RegisterDevice)))
+		mux.Handle("POST /v1/me/store", h.Authenticate(http.HandlerFunc(h.Me.CreateStore)))
+	}
 
 	if h.Media != nil {
 		mux.Handle("POST /v1/me/images", h.Authenticate(http.HandlerFunc(h.Media.Upload)))
