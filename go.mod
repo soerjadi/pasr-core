@@ -5,6 +5,7 @@ go 1.26.3
 require (
 	github.com/BurntSushi/toml v1.6.0
 	github.com/exaring/otelpgx v0.13.0
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/oemahdev/logger v1.0.1
 	github.com/pressly/goose/v3 v3.29.0
