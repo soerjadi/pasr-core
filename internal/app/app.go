@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/auth"
+	catalogrest "github.com/oemah/nusantara/core/internal/adapters/primary/rest/catalog"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/category"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/me"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/media"
@@ -130,9 +131,11 @@ func New(ctx context.Context, cfg *config.Config, opts ...Options) (*App, error)
 	h := router.Handlers{
 		Auth:         auth.NewHandler(identity),
 		Category:     category.NewHandler(catalog),
+		Catalog:      catalogrest.NewHandler(catalog),
 		Media:        media.NewHandler(catalog, cfg.Images.MaxBytes, files),
 		Me:           me.NewHandler(account),
 		Authenticate: middleware.Auth(identity.ParseAccessToken),
+		OptionalAuth: middleware.OptionalAuth(identity.ParseAccessToken),
 	}
 	ping := func(r *http.Request) error { return pool.Ping(r.Context()) }
 

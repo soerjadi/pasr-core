@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/auth"
+	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/catalog"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/category"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/me"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/media"
@@ -13,10 +14,13 @@ import (
 type Handlers struct {
 	Auth     *auth.Handler
 	Category *category.Handler
+	Catalog  *catalog.Handler
 	Media    *media.Handler
 	Me       *me.Handler
 	// Authenticate wraps a handler so it only runs for a valid bearer token.
 	Authenticate func(http.Handler) http.Handler
+	// OptionalAuth lets anonymous requests through but rejects a present invalid token.
+	OptionalAuth func(http.Handler) http.Handler
 }
 
 // New wires routes on the stdlib mux (Go 1.22+ method patterns) and wraps them in the global middleware.
@@ -38,6 +42,13 @@ func New(h Handlers, allowedOrigins []string, ping func(*http.Request) error) ht
 	mux.HandleFunc("POST /v1/auth/logout", h.Auth.Logout)
 
 	mux.HandleFunc("GET /v1/categories", h.Category.List)
+
+	if h.Catalog != nil {
+		mux.HandleFunc("GET /v1/products", h.Catalog.ListProducts)
+		mux.Handle("GET /v1/products/{productId}", h.OptionalAuth(http.HandlerFunc(h.Catalog.GetProduct)))
+		mux.Handle("GET /v1/sellers/{sellerId}", h.OptionalAuth(http.HandlerFunc(h.Catalog.GetSeller)))
+		mux.HandleFunc("GET /v1/sellers/{sellerId}/reviews", h.Catalog.ListSellerReviews)
+	}
 
 	if h.Me != nil {
 		mux.Handle("GET /v1/me", h.Authenticate(http.HandlerFunc(h.Me.Get)))
