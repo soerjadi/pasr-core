@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -74,4 +75,17 @@ func kindStatus(kind error) int {
 		return http.StatusTooManyRequests
 	}
 	return 0
+}
+
+type principalKey struct{}
+
+// WithPrincipal stores the authenticated caller on the context.
+func WithPrincipal(ctx context.Context, c domain.Claims) context.Context {
+	return context.WithValue(ctx, principalKey{}, c)
+}
+
+// Principal returns the authenticated caller, or false for anonymous requests.
+func Principal(ctx context.Context) (domain.Claims, bool) {
+	c, ok := ctx.Value(principalKey{}).(domain.Claims)
+	return c, ok
 }
