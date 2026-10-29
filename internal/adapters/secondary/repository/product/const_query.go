@@ -14,12 +14,12 @@ import (
 //	FROM products p JOIN stores s ON s.id = p.store_id WHERE ` + product.VisibleSQL
 const VisibleSQL = `s.status = 'VERIFIED' AND p.status <> 'HIDDEN' AND p.deleted_at IS NULL`
 
-// ratingSQL is the average rating rounded to one decimal, 0 without reviews.
-const ratingSQL = `COALESCE(ROUND(p.rating_sum::numeric / NULLIF(p.rating_count, 0), 1), 0)::float8`
+// RatingSQL is the average rating rounded to one decimal, 0 without reviews.
+const RatingSQL = `COALESCE(ROUND(p.rating_sum::numeric / NULLIF(p.rating_count, 0), 1), 0)::float8`
 
 const (
 	getVisibleQuery = `
-		SELECT p.id, p.name, p.store_id, s.name, p.description, p.price, ` + ratingSQL + `,
+		SELECT p.id, p.name, p.store_id, s.name, p.description, p.price, ` + RatingSQL + `,
 		       p.rating_count, p.stock, p.halal_verified,
 		       ($2::bigint > 0 AND EXISTS (SELECT 1 FROM favorites f WHERE f.user_id = $2 AND f.product_id = p.id))
 		FROM products p
@@ -48,7 +48,7 @@ func buildListQuery(q domain.ProductQuery) (string, []any) {
 	}
 
 	var b strings.Builder
-	b.WriteString(`SELECT p.id, p.name, p.store_id, s.name, p.price, ` + ratingSQL + `,
+	b.WriteString(`SELECT p.id, p.name, p.store_id, s.name, p.price, ` + RatingSQL + `,
 		p.rating_count, p.stock, p.halal_verified
 		FROM products p
 		JOIN stores s ON s.id = p.store_id
