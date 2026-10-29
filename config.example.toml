@@ -3,6 +3,8 @@ port = 8080
 env = "development"
 shutdown_timeout = 10
 allowed_origins = ["*"]
+# E.164 numbers that receive the operator role on login.
+operator_phones = []
 
 [database]
 url = "postgres://nusantara:nusantara@localhost:5432/nusantara?sslmode=disable"
@@ -16,6 +18,8 @@ trace_include_sql = false
 trace_include_params = false
 # Maximum length of SQL query text in spans. 0 = no truncation.
 trace_max_query_len = 500
+# Run goose migrations on startup.
+auto_migrate = false
 
 [jwt]
 access_secret = "change-me"
@@ -34,3 +38,37 @@ max_age = 28
 enabled = false
 endpoint = "localhost:4317"
 service_name = "nusantara-core"
+
+[otp]
+# Required in production. HMAC key for OTP hashing.
+secret = "change-me-otp"
+ttl_seconds = 300
+max_attempts = 5
+phone_limit = 3
+ip_limit = 10
+window_minutes = 10
+# "log" writes the code to the log (development only).
+sender = "log"
+
+[orders]
+accept_window_minutes = 10
+timezone = "Asia/Jakarta"
+
+[images]
+max_bytes = 5242880
+max_pixels = 40000000
+
+[storage]
+# local | s3
+driver = "local"
+local_dir = "uploads"
+public_base_url = "http://localhost:8080/uploads"
+s3_endpoint = ""
+s3_bucket = ""
+s3_access_key = ""
+s3_secret_key = ""
+
+[push]
+# log | fcm
+driver = "log"
+fcm_credentials_file = ""
