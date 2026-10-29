@@ -159,3 +159,15 @@ func mustPool(t *testing.T, url string) *pgxpool.Pool {
 	t.Cleanup(p.Close)
 	return p
 }
+
+func TestFavoriteIDsIncrease(t *testing.T) {
+	pool := pgtest.Pool(t)
+	u := newUser(t, pool, "+6281200000001")
+	s := newStore(t, pool, newUser(t, pool, "+6281200000002"))
+	p1, p2 := newProduct(t, pool, s), newProduct(t, pool, s)
+	exec(t, pool, `INSERT INTO favorites (user_id, product_id) VALUES ($1, $2), ($1, $3)`, u, p1, p2)
+	if ok := scalar[bool](t, pool, `SELECT (SELECT id FROM favorites WHERE product_id = $1) < (SELECT id FROM favorites WHERE product_id = $2)`, p1, p2); !ok {
+		t.Fatal("favorite ids not increasing")
+	}
+	wantErr(t, pool, `INSERT INTO favorites (user_id, product_id) VALUES ($1, $2)`, u, p1)
+}
