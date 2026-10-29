@@ -10,6 +10,7 @@ import (
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/media"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/middleware"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/mystore"
+	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/social"
 )
 
 type Handlers struct {
@@ -19,6 +20,7 @@ type Handlers struct {
 	Media    *media.Handler
 	Me       *me.Handler
 	MyStore  *mystore.Handler
+	Social   *social.Handler
 	// Authenticate wraps a handler so it only runs for a valid bearer token.
 	Authenticate func(http.Handler) http.Handler
 	// OptionalAuth lets anonymous requests through but rejects a present invalid token.
@@ -68,6 +70,14 @@ func New(h Handlers, allowedOrigins []string, ping func(*http.Request) error) ht
 		mux.Handle("GET /v1/me/store/products/{id}", h.Authenticate(http.HandlerFunc(h.MyStore.GetProduct)))
 		mux.Handle("PATCH /v1/me/store/products/{id}", h.Authenticate(http.HandlerFunc(h.MyStore.UpdateProduct)))
 		mux.Handle("DELETE /v1/me/store/products/{id}", h.Authenticate(http.HandlerFunc(h.MyStore.DeleteProduct)))
+	}
+
+	if h.Social != nil {
+		mux.Handle("GET /v1/me/favorites", h.Authenticate(http.HandlerFunc(h.Social.ListFavorites)))
+		mux.Handle("PUT /v1/me/favorites/{productId}", h.Authenticate(http.HandlerFunc(h.Social.AddFavorite)))
+		mux.Handle("DELETE /v1/me/favorites/{productId}", h.Authenticate(http.HandlerFunc(h.Social.RemoveFavorite)))
+		mux.Handle("PUT /v1/me/following/{sellerId}", h.Authenticate(http.HandlerFunc(h.Social.Follow)))
+		mux.Handle("DELETE /v1/me/following/{sellerId}", h.Authenticate(http.HandlerFunc(h.Social.Unfollow)))
 	}
 
 	if h.Media != nil {

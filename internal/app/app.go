@@ -16,6 +16,7 @@ import (
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/middleware"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/mystore"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/router"
+	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/social"
 	"github.com/oemah/nusantara/core/internal/adapters/secondary/otp/logsender"
 	categoryrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/category"
 	devicerepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/device"
@@ -147,6 +148,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...Options) (*App, error)
 		Media:        media.NewHandler(catalog, cfg.Images.MaxBytes, files),
 		Me:           me.NewHandler(account),
 		MyStore:      mystore.NewHandler(storeMgmt),
+		Social:       social.NewHandler(catalog),
 		Authenticate: middleware.Auth(identity.ParseAccessToken),
 		OptionalAuth: middleware.OptionalAuth(identity.ParseAccessToken),
 	}
