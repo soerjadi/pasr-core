@@ -19,9 +19,12 @@ import (
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/router"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/social"
 	"github.com/oemah/nusantara/core/internal/adapters/secondary/otp/logsender"
+	"github.com/oemah/nusantara/core/internal/adapters/secondary/push/fcm"
+	"github.com/oemah/nusantara/core/internal/adapters/secondary/push/logpusher"
 	adrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/ad"
 	categoryrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/category"
 	devicerepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/device"
+	notificationrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/notification"
 	otprepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/otp"
 	productrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/product"
 	reviewrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/review"
@@ -35,11 +38,13 @@ import (
 	s3storage "github.com/oemah/nusantara/core/internal/adapters/secondary/storage/s3"
 	"github.com/oemah/nusantara/core/internal/core/domain"
 	"github.com/oemah/nusantara/core/internal/core/ports/secondary/otp"
+	"github.com/oemah/nusantara/core/internal/core/ports/secondary/push"
 	"github.com/oemah/nusantara/core/internal/core/ports/secondary/storage"
 	accountsvc "github.com/oemah/nusantara/core/internal/core/services/account"
 	adssvc "github.com/oemah/nusantara/core/internal/core/services/ads"
 	catalogsvc "github.com/oemah/nusantara/core/internal/core/services/catalog"
 	identitysvc "github.com/oemah/nusantara/core/internal/core/services/identity"
+	notifysvc "github.com/oemah/nusantara/core/internal/core/services/notify"
 	storemgmtsvc "github.com/oemah/nusantara/core/internal/core/services/storemgmt"
 	"github.com/oemah/nusantara/core/internal/infrastructure/config"
 	"github.com/oemah/nusantara/core/internal/infrastructure/db"
@@ -51,6 +56,7 @@ type Options struct {
 	Clock     domain.Clock
 	OTPSender otp.Sender
 	Storage   storage.ObjectStorage // defaults to the adapter chosen by cfg.Storage.Driver
+	Pusher    push.Pusher           // defaults to the adapter chosen by cfg.Push.Driver
 }
 
 // App is the composition root: it builds repositories, services and handlers and owns their resources.
@@ -84,6 +90,14 @@ func New(ctx context.Context, cfg *config.Config, opts ...Options) (*App, error)
 			return nil, err
 		}
 		opt.Storage = st
+	}
+
+	if opt.Pusher == nil {
+		p, err := newPusher(ctx, cfg.Push)
+		if err != nil {
+			return nil, err
+		}
+		opt.Pusher = p
 	}
 
 	pool, err := db.New(ctx, cfg.Database)
@@ -145,6 +159,13 @@ func New(ctx context.Context, cfg *config.Config, opts ...Options) (*App, error)
 
 	adsService := adssvc.NewService(adrepo.NewAdRepository(exec), opt.Clock)
 
+	notify := notifysvc.NewService(
+		notificationrepo.NewNotificationRepository(exec),
+		devicerepo.NewDeviceRepository(exec),
+		opt.Pusher,
+		exec,
+	)
+
 	files, _ := opt.Storage.(media.FileServer) // only the local driver serves its own files
 	h := router.Handlers{
 		Ads:          ads.NewHandler(adsService),
@@ -165,6 +186,8 @@ func New(ctx context.Context, cfg *config.Config, opts ...Options) (*App, error)
 		_, err := catalog.PurgeOrphanUploads(ctx)
 		return err
 	})
+
+	runner.Add("notifications-dispatch", 5*time.Second, notify.Dispatch)
 
 	return &App{pool: pool, exec: exec, clock: opt.Clock, handler: router.New(h, cfg.App.AllowedOrigins, ping), jobs: runner}, nil
 }
@@ -192,4 +215,17 @@ func newStorage(cfg config.Storage) (storage.ObjectStorage, error) {
 		})
 	}
 	return nil, fmt.Errorf("app: unknown storage driver %q", cfg.Driver)
+}
+
+func newPusher(ctx context.Context, cfg config.Push) (push.Pusher, error) {
+	switch cfg.Driver {
+	case "log", "":
+		return logpusher.New(), nil
+	case "fcm":
+		if cfg.FCMCredentialsFile == "" {
+			return nil, fmt.Errorf("app: push driver fcm requires push.fcm_credentials_file")
+		}
+		return fcm.NewFromFile(ctx, cfg.FCMCredentialsFile)
+	}
+	return nil, fmt.Errorf("app: unknown push driver %q", cfg.Driver)
 }

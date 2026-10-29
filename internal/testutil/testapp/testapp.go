@@ -27,6 +27,7 @@ type Env struct {
 	Clock    *FakeClock     // the application clock; advance it to test expiry
 	OTP      *FakeOTPSender // records the latest code sent per phone
 	Storage  *MemStorage    // in-memory object storage injected into the app
+	Push     *FakePusher    // records every push the dispatcher sends
 	opPhones map[string]bool
 }
 
@@ -74,6 +75,7 @@ func New(t *testing.T, opts ...Option) *Env {
 	clock := NewFakeClock(time.Now())
 	sender := NewFakeOTPSender()
 	store := NewMemStorage()
+	pusher := NewFakePusher()
 
 	cfg := &config.Config{
 		App:      config.App{Port: 0, Env: "test", ShutdownTimeout: 1},
@@ -88,7 +90,7 @@ func New(t *testing.T, opts ...Option) *Env {
 	for _, o := range opts {
 		o(cfg)
 	}
-	a, err := app.New(context.Background(), cfg, app.Options{Clock: clock, OTPSender: sender, Storage: store})
+	a, err := app.New(context.Background(), cfg, app.Options{Clock: clock, OTPSender: sender, Storage: store, Pusher: pusher})
 	if err != nil {
 		t.Fatalf("testapp: build app: %v", err)
 	}
@@ -103,7 +105,7 @@ func New(t *testing.T, opts ...Option) *Env {
 			ops[n] = true
 		}
 	}
-	return &Env{t: t, Server: srv, Clock: clock, OTP: sender, Storage: store, opPhones: ops}
+	return &Env{t: t, Server: srv, Clock: clock, OTP: sender, Storage: store, Push: pusher, opPhones: ops}
 }
 
 // Do sends a request; a non-nil body is JSON-encoded.
