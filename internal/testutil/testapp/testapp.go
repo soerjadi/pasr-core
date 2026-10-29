@@ -5,9 +5,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"net/textproto"
 	"testing"
 	"time"
 
@@ -174,4 +177,42 @@ func (e *Env) SignInOperator(phone string) domain.Session {
 		e.t.Fatalf("testapp: SignInOperator: %q is not a configured operator phone (use OperatorPhone or set App.OperatorPhones via WithConfig)", phone)
 	}
 	return e.SignIn(phone)
+}
+
+// DoFile sends a multipart/form-data request with one file part.
+func (e *Env) DoFile(method, path, field, filename, contentType string, data []byte, opts ...Opt) *Resp {
+	e.t.Helper()
+	var buf bytes.Buffer
+	mw := multipart.NewWriter(&buf)
+	h := textproto.MIMEHeader{}
+	h.Set("Content-Disposition", fmt.Sprintf(`form-data; name=%q; filename=%q`, field, filename))
+	h.Set("Content-Type", contentType)
+	part, err := mw.CreatePart(h)
+	if err != nil {
+		e.t.Fatalf("testapp: multipart part: %v", err)
+	}
+	if _, err := part.Write(data); err != nil {
+		e.t.Fatalf("testapp: multipart write: %v", err)
+	}
+	if err := mw.Close(); err != nil {
+		e.t.Fatalf("testapp: multipart close: %v", err)
+	}
+	req, err := http.NewRequest(method, e.Server.URL+path, &buf)
+	if err != nil {
+		e.t.Fatalf("testapp: new request: %v", err)
+	}
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+	for _, o := range opts {
+		o(req)
+	}
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		e.t.Fatalf("testapp: %s %s: %v", method, path, err)
+	}
+	defer res.Body.Close()
+	b, err := io.ReadAll(res.Body)
+	if err != nil {
+		e.t.Fatalf("testapp: read body: %v", err)
+	}
+	return &Resp{Status: res.StatusCode, Body: b, t: e.t}
 }

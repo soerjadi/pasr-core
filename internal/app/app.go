@@ -10,6 +10,8 @@ import (
 
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/auth"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/category"
+	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/media"
+	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/middleware"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/router"
 	"github.com/oemah/nusantara/core/internal/adapters/secondary/otp/logsender"
 	categoryrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/category"
@@ -104,9 +106,12 @@ func New(ctx context.Context, cfg *config.Config, opts ...Options) (*App, error)
 		return nil, err
 	}
 
+	files, _ := opt.Storage.(media.FileServer) // only the local driver serves its own files
 	h := router.Handlers{
-		Auth:     auth.NewHandler(identity),
-		Category: category.NewHandler(catalog),
+		Auth:         auth.NewHandler(identity),
+		Category:     category.NewHandler(catalog),
+		Media:        media.NewHandler(catalog, cfg.Images.MaxBytes, files),
+		Authenticate: middleware.Auth(identity.ParseAccessToken),
 	}
 	ping := func(r *http.Request) error { return pool.Ping(r.Context()) }
 
