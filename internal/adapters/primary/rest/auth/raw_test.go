@@ -15,3 +15,21 @@ func verifyRaw(baseURL, phone, code string) int {
 	defer res.Body.Close()
 	return res.StatusCode
 }
+
+// requestRaw posts an OTP request without touching *testing.T, so it is safe in goroutines.
+func requestRaw(baseURL, phone, ip string) int {
+	req, err := http.NewRequest(http.MethodPost, baseURL+"/v1/auth/otp/request", strings.NewReader(`{"phone":"`+phone+`"}`))
+	if err != nil {
+		return -1
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if ip != "" {
+		req.Header.Set("CF-Connecting-IP", ip)
+	}
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return -1
+	}
+	defer res.Body.Close()
+	return res.StatusCode
+}

@@ -19,20 +19,21 @@ import (
 
 // Env is a running application under test.
 type Env struct {
-	t      *testing.T
-	Server *httptest.Server
-	Clock  *FakeClock     // the application clock; advance it to test expiry
-	OTP    *FakeOTPSender // records the latest code sent per phone
+	t        *testing.T
+	Server   *httptest.Server
+	Clock    *FakeClock     // the application clock; advance it to test expiry
+	OTP      *FakeOTPSender // records the latest code sent per phone
+	opPhones map[string]bool
 }
 
 // Test secrets and the phones that receive the operator role.
 const (
-	AccessSecret    = "test-access-secret"
-	RefreshSecret   = "test-refresh-secret"
-	OTPSecret       = "test-otp-secret"
-	OperatorPhone   = "+6281999000001"
-	OperatorPhone2  = "+6281999000002"
-	defaultAccessTT = 15
+	AccessSecret     = "test-access-secret"
+	RefreshSecret    = "test-refresh-secret"
+	OTPSecret        = "test-otp-secret"
+	OperatorPhone    = "+6281999000001"
+	OperatorPhone2   = "+6281999000002"
+	defaultAccessTTL = 15
 )
 
 // Option customises the application under test.
@@ -71,7 +72,7 @@ func New(t *testing.T, opts ...Option) *Env {
 	cfg := &config.Config{
 		App:      config.App{Port: 0, Env: "test", ShutdownTimeout: 1},
 		Database: config.Database{URL: url, MaxConns: 5, MinConns: 0, MaxConnLifetime: 30, MaxConnIdleTime: 5},
-		JWT:      config.JWT{AccessSecret: AccessSecret, RefreshSecret: RefreshSecret, AccessExpiry: defaultAccessTT, RefreshExpiry: 60},
+		JWT:      config.JWT{AccessSecret: AccessSecret, RefreshSecret: RefreshSecret, AccessExpiry: defaultAccessTTL, RefreshExpiry: 60},
 		OTP: config.OTP{
 			Secret: OTPSecret, TTLSeconds: 300, MaxAttempts: 5, PhoneLimit: 100, IPLimit: 1000, WindowMinutes: 10, Sender: "log",
 		},
@@ -89,7 +90,13 @@ func New(t *testing.T, opts ...Option) *Env {
 		srv.Close()
 		_ = a.Shutdown(context.Background())
 	})
-	return &Env{t: t, Server: srv, Clock: clock, OTP: sender}
+	ops := map[string]bool{}
+	for _, p := range cfg.App.OperatorPhones {
+		if n, err := domain.NormalizePhone(p); err == nil {
+			ops[n] = true
+		}
+	}
+	return &Env{t: t, Server: srv, Clock: clock, OTP: sender, opPhones: ops}
 }
 
 // Do sends a request; a non-nil body is JSON-encoded.
@@ -159,5 +166,9 @@ func (e *Env) SignIn(phone string) domain.Session {
 // SignInOperator signs in a phone configured as an operator (OperatorPhone or OperatorPhone2 by default).
 func (e *Env) SignInOperator(phone string) domain.Session {
 	e.t.Helper()
+	norm, err := domain.NormalizePhone(phone)
+	if err != nil || !e.opPhones[norm] {
+		e.t.Fatalf("testapp: SignInOperator: %q is not a configured operator phone (use OperatorPhone or set App.OperatorPhones via WithConfig)", phone)
+	}
 	return e.SignIn(phone)
 }

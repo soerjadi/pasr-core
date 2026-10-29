@@ -2,6 +2,7 @@ package auth_test
 
 import (
 	"net/http"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -271,4 +272,58 @@ func TestLogout_Idempotent204(t *testing.T) {
 		t.Fatalf("unknown token: %d", got)
 	}
 	assertErr(t, refresh(env, s.RefreshToken), http.StatusUnauthorized, "UNAUTHORIZED")
+}
+
+func fireParallel(env *testapp.Env, n int, phoneFor func(i int) string, ip string) (ok, limited, other int32) {
+	var wg sync.WaitGroup
+	start := make(chan struct{})
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			<-start
+			switch requestRaw(env.Server.URL, phoneFor(i), ip) {
+			case http.StatusNoContent:
+				atomic.AddInt32(&ok, 1)
+			case http.StatusTooManyRequests:
+				atomic.AddInt32(&limited, 1)
+			default:
+				atomic.AddInt32(&other, 1)
+			}
+		}(i)
+	}
+	close(start)
+	wg.Wait()
+	return
+}
+
+func TestRequestOTP_ConcurrentRespectsPhoneLimit(t *testing.T) {
+	env := testapp.New(t, testapp.WithConfig(func(c *config.Config) { c.OTP.PhoneLimit = 2 }))
+	ok, limited, other := fireParallel(env, 8, func(int) string { return phone }, "")
+	if ok != 2 || limited != 6 || other != 0 {
+		t.Fatalf("204 = %d, 429 = %d, other = %d; want 2, 6, 0", ok, limited, other)
+	}
+}
+
+func TestRequestOTP_ConcurrentRespectsIPLimit(t *testing.T) {
+	env := testapp.New(t, testapp.WithConfig(func(c *config.Config) { c.OTP.IPLimit = 2 }))
+	ok, limited, other := fireParallel(env, 8, func(i int) string { return "+628123456000" + string(rune('0'+i)) }, "203.0.113.7")
+	if ok != 2 || limited != 6 || other != 0 {
+		t.Fatalf("204 = %d, 429 = %d, other = %d; want 2, 6, 0", ok, limited, other)
+	}
+}
+
+func TestLogout_EmptyOrMalformedBody204(t *testing.T) {
+	env := testapp.New(t)
+	for _, body := range []string{"", "not json", "{}"} {
+		req, _ := http.NewRequest(http.MethodPost, env.Server.URL+"/v1/auth/logout", strings.NewReader(body))
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		if res.StatusCode != http.StatusNoContent {
+			t.Fatalf("body %q: status %d", body, res.StatusCode)
+		}
+	}
 }
