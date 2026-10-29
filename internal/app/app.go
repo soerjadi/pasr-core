@@ -28,6 +28,7 @@ import (
 	identitysvc "github.com/oemah/nusantara/core/internal/core/services/identity"
 	"github.com/oemah/nusantara/core/internal/infrastructure/config"
 	"github.com/oemah/nusantara/core/internal/infrastructure/db"
+	"github.com/oemah/nusantara/core/internal/infrastructure/jobs"
 )
 
 // Options overrides collaborators; tests inject fakes here. Later tasks add fields.
@@ -43,6 +44,7 @@ type App struct {
 	exec    *db.Executor
 	clock   domain.Clock
 	handler http.Handler
+	jobs    *jobs.Runner
 }
 
 func New(ctx context.Context, cfg *config.Config, opts ...Options) (*App, error) {
@@ -115,14 +117,25 @@ func New(ctx context.Context, cfg *config.Config, opts ...Options) (*App, error)
 	}
 	ping := func(r *http.Request) error { return pool.Ping(r.Context()) }
 
-	return &App{pool: pool, exec: exec, clock: opt.Clock, handler: router.New(h, cfg.App.AllowedOrigins, ping)}, nil
+	runner := jobs.NewRunner()
+	runner.Add("orphan-uploads-gc", time.Hour, func(ctx context.Context) error {
+		_, err := catalog.PurgeOrphanUploads(ctx)
+		return err
+	})
+
+	return &App{pool: pool, exec: exec, clock: opt.Clock, handler: router.New(h, cfg.App.AllowedOrigins, ping), jobs: runner}, nil
 }
 
 func (a *App) Router() http.Handler { return a.handler }
 
-func (a *App) Shutdown(context.Context) error {
+// Start launches the background jobs; they run until Shutdown. ctx should outlive startup.
+func (a *App) Start(ctx context.Context) { a.jobs.Start(ctx) }
+
+// Shutdown stops the background jobs (waiting for running ones until ctx expires), then releases resources.
+func (a *App) Shutdown(ctx context.Context) error {
+	err := a.jobs.Stop(ctx)
 	a.pool.Close()
-	return nil
+	return err
 }
 
 func newStorage(cfg config.Storage) (storage.ObjectStorage, error) {

@@ -54,6 +54,8 @@ func run() error {
 		return fmt.Errorf("init app: %w", err)
 	}
 
+	a.Start(context.Background())
+
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.App.Port),
 		Handler:      a.Router(),
