@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/oemah/nusantara/core/internal/adapters/secondary/push/fcm"
@@ -76,18 +77,9 @@ func TestFCM_UnregisteredAndErrors(t *testing.T) {
 			if unreg != c.unreg || (err != nil) != c.err {
 				t.Fatalf("unreg=%v err=%v", unreg, err)
 			}
-			if err != nil && contains(err.Error(), "secret-device-token") {
+			if err != nil && strings.Contains(err.Error(), "secret-device-token") {
 				t.Fatalf("error leaks token: %v", err)
 			}
 		})
 	}
-}
-
-func contains(s, sub string) bool {
-	for i := 0; i+len(sub) <= len(s); i++ {
-		if s[i:i+len(sub)] == sub {
-			return true
-		}
-	}
-	return false
 }
