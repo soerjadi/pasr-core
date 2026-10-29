@@ -14,6 +14,7 @@ import (
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/me"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/media"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/middleware"
+	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/mystore"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/router"
 	"github.com/oemah/nusantara/core/internal/adapters/secondary/otp/logsender"
 	categoryrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/category"
@@ -34,6 +35,7 @@ import (
 	accountsvc "github.com/oemah/nusantara/core/internal/core/services/account"
 	catalogsvc "github.com/oemah/nusantara/core/internal/core/services/catalog"
 	identitysvc "github.com/oemah/nusantara/core/internal/core/services/identity"
+	storemgmtsvc "github.com/oemah/nusantara/core/internal/core/services/storemgmt"
 	"github.com/oemah/nusantara/core/internal/infrastructure/config"
 	"github.com/oemah/nusantara/core/internal/infrastructure/db"
 	"github.com/oemah/nusantara/core/internal/infrastructure/jobs"
@@ -127,6 +129,14 @@ func New(ctx context.Context, cfg *config.Config, opts ...Options) (*App, error)
 		exec,
 	)
 
+	storeMgmt := storemgmtsvc.NewService(
+		productrepo.NewProductRepository(exec),
+		storerepo.NewStoreRepository(exec),
+		uploadrepo.NewUploadRepository(exec),
+		opt.Storage,
+		exec,
+	)
+
 	files, _ := opt.Storage.(media.FileServer) // only the local driver serves its own files
 	h := router.Handlers{
 		Auth:         auth.NewHandler(identity),
@@ -134,6 +144,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...Options) (*App, error)
 		Catalog:      catalogrest.NewHandler(catalog),
 		Media:        media.NewHandler(catalog, cfg.Images.MaxBytes, files),
 		Me:           me.NewHandler(account),
+		MyStore:      mystore.NewHandler(storeMgmt),
 		Authenticate: middleware.Auth(identity.ParseAccessToken),
 		OptionalAuth: middleware.OptionalAuth(identity.ParseAccessToken),
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/me"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/media"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/middleware"
+	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/mystore"
 )
 
 type Handlers struct {
@@ -17,6 +18,7 @@ type Handlers struct {
 	Catalog  *catalog.Handler
 	Media    *media.Handler
 	Me       *me.Handler
+	MyStore  *mystore.Handler
 	// Authenticate wraps a handler so it only runs for a valid bearer token.
 	Authenticate func(http.Handler) http.Handler
 	// OptionalAuth lets anonymous requests through but rejects a present invalid token.
@@ -55,6 +57,14 @@ func New(h Handlers, allowedOrigins []string, ping func(*http.Request) error) ht
 		mux.Handle("PATCH /v1/me", h.Authenticate(http.HandlerFunc(h.Me.Update)))
 		mux.Handle("PUT /v1/me/devices", h.Authenticate(http.HandlerFunc(h.Me.RegisterDevice)))
 		mux.Handle("POST /v1/me/store", h.Authenticate(http.HandlerFunc(h.Me.CreateStore)))
+	}
+
+	if h.MyStore != nil {
+		mux.Handle("POST /v1/me/store/products", h.Authenticate(http.HandlerFunc(h.MyStore.CreateProduct)))
+		mux.Handle("GET /v1/me/store/products", h.Authenticate(http.HandlerFunc(h.MyStore.ListProducts)))
+		mux.Handle("GET /v1/me/store/products/{id}", h.Authenticate(http.HandlerFunc(h.MyStore.GetProduct)))
+		mux.Handle("PATCH /v1/me/store/products/{id}", h.Authenticate(http.HandlerFunc(h.MyStore.UpdateProduct)))
+		mux.Handle("DELETE /v1/me/store/products/{id}", h.Authenticate(http.HandlerFunc(h.MyStore.DeleteProduct)))
 	}
 
 	if h.Media != nil {
