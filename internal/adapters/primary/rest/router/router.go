@@ -60,6 +60,9 @@ func New(h Handlers, allowedOrigins []string, ping func(*http.Request) error) ht
 	}
 
 	if h.MyStore != nil {
+		mux.Handle("GET /v1/me/store", h.Authenticate(http.HandlerFunc(h.MyStore.GetStore)))
+		mux.Handle("PATCH /v1/me/store", h.Authenticate(http.HandlerFunc(h.MyStore.UpdateStore)))
+		mux.Handle("PUT /v1/me/store/open", h.Authenticate(http.HandlerFunc(h.MyStore.SetOpen)))
 		mux.Handle("POST /v1/me/store/products", h.Authenticate(http.HandlerFunc(h.MyStore.CreateProduct)))
 		mux.Handle("GET /v1/me/store/products", h.Authenticate(http.HandlerFunc(h.MyStore.ListProducts)))
 		mux.Handle("GET /v1/me/store/products/{id}", h.Authenticate(http.HandlerFunc(h.MyStore.GetProduct)))
