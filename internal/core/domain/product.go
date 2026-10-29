@@ -1,7 +1,5 @@
 package domain
 
-import "time"
-
 // SellerSummary matches the SellerSummary schema in docs/api/openapi.yaml. The seller is the store.
 type SellerSummary struct {
 	ID            int64     `json:"id"`
@@ -101,5 +99,3 @@ type ProductQuery struct {
 	BeforeID   int64
 	Limit      int
 }
-
-var _ = time.Time{}
