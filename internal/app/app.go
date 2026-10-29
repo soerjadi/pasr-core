@@ -23,6 +23,7 @@ import (
 	productrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/product"
 	reviewrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/review"
 	sessionrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/session"
+	socialrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/social"
 	storerepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/store"
 	storefrontrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/storefront"
 	uploadrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/upload"
@@ -92,6 +93,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...Options) (*App, error)
 		productrepo.NewProductRepository(exec),
 		storefrontrepo.NewStorefrontRepository(exec),
 		reviewrepo.NewReviewRepository(exec),
+		socialrepo.NewSocialRepository(exec),
 		uploadrepo.NewUploadRepository(exec),
 		opt.Storage,
 		catalogsvc.Config{MaxImageBytes: cfg.Images.MaxBytes, MaxImagePixels: cfg.Images.MaxPixels},

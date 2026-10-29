@@ -24,6 +24,7 @@ type service struct {
 	products   repository.ProductRepository
 	storefront repository.StorefrontRepository
 	reviews    repository.ReviewRepository
+	social     repository.SocialRepository
 	uploads    repository.UploadRepository
 	storage    storage.ObjectStorage
 	cfg        Config
@@ -36,6 +37,7 @@ func NewService(
 	products repository.ProductRepository,
 	storefront repository.StorefrontRepository,
 	reviews repository.ReviewRepository,
+	social repository.SocialRepository,
 	uploads repository.UploadRepository, store storage.ObjectStorage,
 	cfg Config,
 	clock domain.Clock,
@@ -44,7 +46,7 @@ func NewService(
 		cfg.OrphanAge = 24 * time.Hour
 	}
 	return &service{
-		categories: categories, products: products, storefront: storefront, reviews: reviews, uploads: uploads, storage: store, cfg: cfg, clock: clock,
+		categories: categories, products: products, storefront: storefront, reviews: reviews, social: social, uploads: uploads, storage: store, cfg: cfg, clock: clock,
 		slots: make(chan struct{}, maxConcurrentImages),
 	}
 }
