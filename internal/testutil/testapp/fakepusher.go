@@ -19,7 +19,7 @@ type FakePusher struct {
 	sends        []PushSend
 	failWith     error
 	unregistered map[string]bool
-	delay        func()
+	delay        func(ctx context.Context)
 }
 
 func NewFakePusher() *FakePusher { return &FakePusher{unregistered: map[string]bool{}} }
@@ -35,7 +35,7 @@ func (p *FakePusher) MarkUnregistered(token string) {
 }
 
 // SetDelay runs fn inside every Send, before it records; tests use it to widen race windows.
-func (p *FakePusher) SetDelay(fn func()) { p.mu.Lock(); p.delay = fn; p.mu.Unlock() }
+func (p *FakePusher) SetDelay(fn func(ctx context.Context)) { p.mu.Lock(); p.delay = fn; p.mu.Unlock() }
 
 // Sends returns a copy of the recorded sends in order.
 func (p *FakePusher) Sends() []PushSend {
@@ -44,12 +44,15 @@ func (p *FakePusher) Sends() []PushSend {
 	return append([]PushSend(nil), p.sends...)
 }
 
-func (p *FakePusher) Send(_ context.Context, token string, n domain.Notification) (bool, error) {
+func (p *FakePusher) Send(ctx context.Context, token string, n domain.Notification) (bool, error) {
 	p.mu.Lock()
 	delay := p.delay
 	p.mu.Unlock()
 	if delay != nil {
-		delay()
+		delay(ctx)
+	}
+	if err := ctx.Err(); err != nil {
+		return false, err
 	}
 	p.mu.Lock()
 	defer p.mu.Unlock()

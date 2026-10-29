@@ -19,7 +19,7 @@ func (s *service) Dispatch(ctx context.Context) error {
 	defer span.End()
 
 	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-		batch, err := s.notifs.ClaimUnsent(ctx, batchSize, maxAttempts)
+		batch, err := s.notifs.ClaimUnsent(ctx, s.batch, maxAttempts)
 		if err != nil {
 			return err
 		}
@@ -45,7 +45,9 @@ func (s *service) deliver(ctx context.Context, n domain.Notification) error {
 	var sent int
 	var sendErrs []string
 	for _, tok := range tokens {
-		unregistered, err := s.pusher.Send(ctx, tok, n)
+		sendCtx, cancel := context.WithTimeout(ctx, s.sendTimeout)
+		unregistered, err := s.pusher.Send(sendCtx, tok, n)
+		cancel()
 		switch {
 		case err != nil:
 			sendErrs = append(sendErrs, err.Error())

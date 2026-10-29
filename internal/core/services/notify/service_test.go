@@ -5,6 +5,7 @@ import (
 	"errors"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -188,7 +189,7 @@ func TestDispatch_TwoDispatchersDoNotDoubleSend(t *testing.T) {
 		f.enqueue(t, uid)
 	}
 	var mu sync.Mutex
-	f.push.SetDelay(func() { mu.Lock(); mu.Unlock() }) // keep the type simple; contention comes from the tx lock
+	f.push.SetDelay(func(context.Context) { mu.Lock(); mu.Unlock() })
 	var wg sync.WaitGroup
 	for d := 0; d < 2; d++ {
 		wg.Add(1)
@@ -214,5 +215,25 @@ func TestDispatch_TwoDispatchersDoNotDoubleSend(t *testing.T) {
 		if n != 1 {
 			t.Fatalf("notification %d sent %d times", id, n)
 		}
+	}
+}
+
+func TestDispatch_StuckPusherIsBoundedBySendTimeout(t *testing.T) {
+	f := setup(t)
+	uid := seed.User(t, f.pool, "", "A")
+	f.device(t, uid, "tok-1")
+	f.enqueue(t, uid)
+	f.push.SetDelay(func(ctx context.Context) { <-ctx.Done() })
+	svc := notify.NewService(notification.NewNotificationRepository(f.exec), device.NewDeviceRepository(f.exec), f.push, f.exec)
+	notify.Tune(svc, 0, 100*time.Millisecond)
+	start := time.Now()
+	if err := svc.Dispatch(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if time.Since(start) > 3*time.Second {
+		t.Fatalf("dispatch took %v", time.Since(start))
+	}
+	if f.count(t, "attempts = 1 AND sent_at IS NULL") != 1 {
+		t.Fatal("timed-out send should be recorded as a failed attempt")
 	}
 }
