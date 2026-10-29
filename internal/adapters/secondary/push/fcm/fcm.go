@@ -111,9 +111,7 @@ func (p *pusher) Send(ctx context.Context, token string, n domain.Notification) 
 		} `json:"error"`
 	}
 	_ = json.Unmarshal(raw, &e)
-	if res.StatusCode == http.StatusNotFound {
-		return true, nil
-	}
+	// A bare 404 can mean a wrong project or endpoint, so only the explicit UNREGISTERED code prunes a token.
 	for _, d := range e.Error.Details {
 		if d.ErrorCode == "UNREGISTERED" {
 			return true, nil

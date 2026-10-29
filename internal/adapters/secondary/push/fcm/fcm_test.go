@@ -63,7 +63,8 @@ func TestFCM_UnregisteredAndErrors(t *testing.T) {
 		unreg  bool
 		err    bool
 	}{
-		{"404", 404, `{"error":{"status":"NOT_FOUND"}}`, true, false},
+		{"404 with UNREGISTERED", 404, `{"error":{"status":"NOT_FOUND","details":[{"errorCode":"UNREGISTERED"}]}}`, true, false},
+		{"plain 404 is an error, token kept", 404, `{"error":{"status":"NOT_FOUND"}}`, false, true},
 		{"unregistered code", 400, `{"error":{"status":"INVALID_ARGUMENT","details":[{"errorCode":"UNREGISTERED"}]}}`, true, false},
 		{"server error", 500, `{"error":{"message":"oops"}}`, false, true},
 	}
