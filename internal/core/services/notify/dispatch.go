@@ -14,6 +14,11 @@ import (
 // disjoint rows), sends each notification to every device of its user and records the outcome.
 // A notification counts as delivered when the user has no devices or at least one send succeeded;
 // otherwise attempts is incremented and, after maxAttempts, it is no longer claimed.
+//
+// Delivery semantics: best-effort and at-least-once per batch. Sends happen before the batch commits, so a
+// crash or database error after some sends rolls the whole batch back and those notifications are sent again.
+// A user with several devices where only some sends fail still counts as sent; the failed devices are not
+// retried. Tokens the provider reports as unregistered are deleted. Each send is bounded by sendTimeout.
 func (s *service) Dispatch(ctx context.Context) error {
 	ctx, span := tracer.Start(ctx, "service.notify.Dispatch")
 	defer span.End()
