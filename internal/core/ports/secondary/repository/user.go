@@ -11,4 +11,6 @@ type UserRepository interface {
 	UpsertByPhone(ctx context.Context, phone string, role domain.Role) (domain.User, error)
 	// GetByID returns domain.ErrNotFound for an unknown id.
 	GetByID(ctx context.Context, id int64) (domain.User, error)
+	// UpdateName sets the display name and returns the user; domain.ErrNotFound for an unknown id.
+	UpdateName(ctx context.Context, id int64, name string) (domain.User, error)
 }
