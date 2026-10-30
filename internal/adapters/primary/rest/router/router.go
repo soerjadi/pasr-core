@@ -3,6 +3,7 @@ package router
 import (
 	"net/http"
 
+	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/admin"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/ads"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/auth"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/catalog"
@@ -16,6 +17,7 @@ import (
 )
 
 type Handlers struct {
+	Admin    *admin.Handler
 	Ads      *ads.Handler
 	Auth     *auth.Handler
 	Category *category.Handler
@@ -104,6 +106,14 @@ func New(h Handlers, allowedOrigins []string, ping func(*http.Request) error) ht
 		mux.Handle("DELETE /v1/me/following/{sellerId}", h.Authenticate(http.HandlerFunc(h.Social.Unfollow)))
 	}
 
+	if h.Admin != nil {
+		// Every operator route is registered here and only here, behind Authenticate and then
+		// RequireOperator: anonymous callers get 401, everyone but an operator 403.
+		for _, rt := range AdminRoutes(h.Admin) {
+			mux.Handle(rt.Pattern, h.Authenticate(middleware.RequireOperator(rt.Handler)))
+		}
+	}
+
 	if h.Media != nil {
 		mux.Handle("POST /v1/me/images", h.Authenticate(http.HandlerFunc(h.Media.Upload)))
 		if h.Media.HasFiles() {
@@ -112,4 +122,24 @@ func New(h Handlers, allowedOrigins []string, ping func(*http.Request) error) ht
 	}
 
 	return middleware.Tracing(middleware.Logger(middleware.Recover(middleware.CORS(allowedOrigins)(mux))))
+}
+
+// Route is a method pattern and the handler it serves.
+type Route struct {
+	Pattern string
+	Handler http.HandlerFunc
+}
+
+// AdminRoutes lists every /v1/admin route. New wraps each one in Authenticate and RequireOperator,
+// so an operator route cannot be added without the role check. a may be nil to list the patterns.
+func AdminRoutes(a *admin.Handler) []Route {
+	if a == nil {
+		a = &admin.Handler{}
+	}
+	return []Route{
+		{"GET /v1/admin/stores", a.ListStores},
+		{"POST /v1/admin/stores/{id}/verify", a.VerifyStore},
+		{"POST /v1/admin/stores/{id}/suspend", a.SuspendStore},
+		{"POST /v1/admin/stores/{id}/reinstate", a.ReinstateStore},
+	}
 }

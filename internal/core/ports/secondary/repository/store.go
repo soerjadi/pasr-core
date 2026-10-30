@@ -22,4 +22,12 @@ type StoreRepository interface {
 	Update(ctx context.Context, storeID int64, u domain.StoreUpdate) error
 	// SetOpen stores the open flag.
 	SetOpen(ctx context.Context, storeID int64, open bool) error
+
+	// ListAdmin pages every store, newest first (id DESC), optionally of one status.
+	ListAdmin(ctx context.Context, q domain.AdminStoreQuery) ([]domain.AdminStore, error)
+	// GetAdmin returns any store by id, or nil, nil when it does not exist. lock takes a row lock
+	// (FOR UPDATE) for a read-modify-write inside a transaction.
+	GetAdmin(ctx context.Context, id int64, lock bool) (*domain.AdminStore, error)
+	// SetStatus stores the verification status.
+	SetStatus(ctx context.Context, id int64, status domain.StoreStatus) error
 }

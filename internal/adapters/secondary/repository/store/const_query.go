@@ -41,3 +41,21 @@ const (
 	`
 	setOpenQuery = `UPDATE stores SET is_open = $2 WHERE id = $1`
 )
+
+const adminColumns = `
+	SELECT id, owner_id, name, owner_name, category_id, kelurahan, address, whatsapp, status, is_open, created_at
+	FROM stores
+`
+
+const (
+	// listAdminQuery pages newest first on the primary key; stores are few (one per seller), so the
+	// status filter needs no index of its own beyond stores_status_idx.
+	listAdminQuery = adminColumns + `
+		WHERE ($1 = '' OR status = $1) AND ($2::bigint = 0 OR id < $2)
+		ORDER BY id DESC
+		LIMIT $3
+	`
+	getAdminQuery          = adminColumns + `WHERE id = $1`
+	getAdminForUpdateQuery = getAdminQuery + ` FOR UPDATE`
+	setStatusQuery         = `UPDATE stores SET status = $2 WHERE id = $1`
+)

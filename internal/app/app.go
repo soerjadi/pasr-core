@@ -9,6 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	adminrest "github.com/oemah/nusantara/core/internal/adapters/primary/rest/admin"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/ads"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/auth"
 	catalogrest "github.com/oemah/nusantara/core/internal/adapters/primary/rest/catalog"
@@ -47,6 +48,7 @@ import (
 	"github.com/oemah/nusantara/core/internal/core/ports/secondary/push"
 	"github.com/oemah/nusantara/core/internal/core/ports/secondary/storage"
 	accountsvc "github.com/oemah/nusantara/core/internal/core/services/account"
+	adminsvc "github.com/oemah/nusantara/core/internal/core/services/admin"
 	adssvc "github.com/oemah/nusantara/core/internal/core/services/ads"
 	catalogsvc "github.com/oemah/nusantara/core/internal/core/services/catalog"
 	identitysvc "github.com/oemah/nusantara/core/internal/core/services/identity"
@@ -193,8 +195,15 @@ func New(ctx context.Context, cfg *config.Config, opts ...Options) (*App, error)
 
 	adsService := adssvc.NewService(adrepo.NewAdRepository(exec), opt.Clock)
 
+	adminService := adminsvc.NewService(adminsvc.Deps{
+		Stores: storerepo.NewStoreRepository(exec),
+		Notify: notify,
+		Tx:     exec,
+	})
+
 	files, _ := opt.Storage.(media.FileServer) // only the local driver serves its own files
 	h := router.Handlers{
+		Admin:        adminrest.NewHandler(adminService),
 		Ads:          ads.NewHandler(adsService),
 		Auth:         auth.NewHandler(identity),
 		Category:     category.NewHandler(catalog),
