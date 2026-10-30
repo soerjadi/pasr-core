@@ -86,3 +86,111 @@ const historyQuery = `
 // statementTimeoutQuery bounds every later statement, lock waits included, of the current transaction.
 // SET does not take bind parameters, so set_config is used with is_local = true.
 const statementTimeoutQuery = `SELECT set_config('statement_timeout', $1, true)`
+
+// lockSellerOrderQuery locks only the seller-order row; $2 = 0 skips the store check (operator, system).
+const lockSellerOrderQuery = `
+	SELECT so.id, so.order_id, o.number, o.buyer_id, so.store_id, so.store_name, s.owner_id, so.status,
+	       so.accept_by, COALESCE(so.cancel_reason, '')
+	FROM seller_orders so
+	JOIN orders o ON o.id = so.order_id
+	JOIN stores s ON s.id = so.store_id
+	WHERE so.id = $1 AND ($2::bigint = 0 OR so.store_id = $2)
+	FOR UPDATE OF so
+`
+
+// updateSellerOrderQuery applies one transition and appends its seller-order history row.
+// NULL parameters keep the stored note and cancellation fields.
+const updateSellerOrderQuery = `
+	WITH u AS (
+		UPDATE seller_orders
+		SET status = $2, updated_at = $3,
+		    note = COALESCE($4, note),
+		    cancel_reason = COALESCE($5, cancel_reason),
+		    cancel_note = COALESCE($6, cancel_note),
+		    cancelled_by = COALESCE($7, cancelled_by)
+		WHERE id = $1
+		RETURNING order_id
+	)
+	INSERT INTO order_status_history (order_id, seller_order_id, status, at)
+	SELECT order_id, $1, $2, $3 FROM u
+`
+
+// lockRestoreProductsQuery locks the seller-order's products in ascending id order, the same
+// order createOrder uses, so the two never deadlock.
+const lockRestoreProductsQuery = `
+	SELECT id FROM products
+	WHERE id IN (SELECT product_id FROM order_items WHERE seller_order_id = $1)
+	ORDER BY id
+	FOR UPDATE
+`
+
+// restoreStockQuery is a plain UPDATE: it gives the items' quantities back and returns a product
+// that was OUT_OF_STOCK to AVAILABLE once it has stock again.
+const restoreStockQuery = `
+	UPDATE products p
+	SET stock = p.stock + q.qty,
+	    status = CASE WHEN p.status = 'OUT_OF_STOCK' AND p.stock + q.qty > 0 THEN 'AVAILABLE' ELSE p.status END
+	FROM (SELECT product_id, sum(quantity) AS qty FROM order_items WHERE seller_order_id = $1 GROUP BY product_id) q
+	WHERE p.id = q.product_id
+`
+
+const lockOrderQuery = `SELECT status FROM orders WHERE id = $1 FOR UPDATE`
+
+const sellerStatusesQuery = `SELECT status FROM seller_orders WHERE order_id = $1 ORDER BY id`
+
+// setOrderStatusQuery stores the derived order status and appends the order-level history row.
+const setOrderStatusQuery = `
+	WITH u AS (UPDATE orders SET status = $2 WHERE id = $1 RETURNING id)
+	INSERT INTO order_status_history (order_id, seller_order_id, status, at)
+	SELECT id, NULL, $2, $3 FROM u
+`
+
+const storeOrderColumns = `
+	SELECT so.id, o.number, so.status, so.created_at, so.accept_by, u.name, so.note, so.subtotal
+	FROM seller_orders so
+	JOIN orders o ON o.id = so.order_id
+	JOIN users u ON u.id = o.buyer_id
+`
+
+// getStoreOrderQuery: $2 = 0 reads a seller-order of any store.
+const getStoreOrderQuery = storeOrderColumns + `WHERE so.id = $1 AND ($2::bigint = 0 OR so.store_id = $2)`
+
+// listStoreOrdersQuery walks seller_orders_store_status_id_idx or seller_orders_store_id_idx.
+const listStoreOrdersQuery = storeOrderColumns + `
+	WHERE so.store_id = $1 AND so.status = ANY($2) AND ($3::bigint = 0 OR so.id < $3)
+	ORDER BY so.id DESC
+	LIMIT $4
+`
+
+const storeOrderItemsQuery = `
+	SELECT oi.id, oi.seller_order_id, oi.product_id, oi.name, oi.image, oi.quantity, oi.unit_price, oi.line_total,
+	       EXISTS (SELECT 1 FROM reviews r WHERE r.order_item_id = oi.id)
+	FROM order_items oi
+	WHERE oi.seller_order_id = ANY($1)
+	ORDER BY oi.id
+`
+
+const storeOrderHistoryQuery = `
+	SELECT seller_order_id, status, at
+	FROM order_status_history
+	WHERE seller_order_id = ANY($1)
+	ORDER BY seller_order_id, at, id
+`
+
+// countStoreOrdersQuery counts every seller tab in one pass over the store's seller-orders.
+const countStoreOrdersQuery = `
+	SELECT count(*) FILTER (WHERE status = 'CREATED'),
+	       count(*) FILTER (WHERE status IN ('SELLER_PROCESSING', 'READY_FOR_PICKUP')),
+	       count(*) FILTER (WHERE status IN ('COMPLETED', 'CANCELLED'))
+	FROM seller_orders
+	WHERE store_id = $1
+`
+
+// overdueQuery uses seller_orders_accept_by_idx; SKIP LOCKED passes over rows being acted on.
+const overdueQuery = `
+	SELECT id FROM seller_orders
+	WHERE status = 'CREATED' AND accept_by <= $1
+	ORDER BY accept_by, id
+	LIMIT $2
+	FOR UPDATE SKIP LOCKED
+`

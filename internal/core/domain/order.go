@@ -103,19 +103,79 @@ type Order struct {
 	StatusHistory []StatusChange `json:"statusHistory"`
 }
 
-// StoreOrder is the seller's view of one seller-order. It is not yet in docs/api/openapi.yaml;
-// Task 17 aligns it with the store orders endpoint.
+// StoreOrder matches the StoreOrder schema: the seller's view of one seller-order. Note is the
+// seller's pickup note; StatusHistory holds the seller-order's own status changes.
 type StoreOrder struct {
 	ID            int64          `json:"id"`
-	OrderID       int64          `json:"orderId"`
 	Number        string         `json:"number"`
-	BuyerName     string         `json:"buyerName"`
 	Status        OrderStatus    `json:"status"`
 	CreatedAt     time.Time      `json:"createdAt"`
+	AcceptBy      *time.Time     `json:"acceptBy,omitempty"`
+	BuyerName     string         `json:"buyerName"`
 	Note          string         `json:"note,omitempty"`
 	Subtotal      int64          `json:"subtotal"`
 	Items         []OrderItem    `json:"items"`
 	StatusHistory []StatusChange `json:"statusHistory"`
+}
+
+// StoreOrderCounts are the store's seller-orders per seller tab (domain.SellerTabStatuses).
+type StoreOrderCounts struct {
+	New        int32 `json:"new"`
+	Processing int32 `json:"processing"`
+	Done       int32 `json:"done"`
+}
+
+// StoreOrderPage matches the StoreOrderPage schema; Counts ignore the tab and cursor.
+type StoreOrderPage struct {
+	Items      []StoreOrder     `json:"items"`
+	NextCursor *string          `json:"nextCursor"`
+	Counts     StoreOrderCounts `json:"counts"`
+}
+
+// RejectReason matches the reason enum of RejectRequest; cancellations use the same values.
+type RejectReason string
+
+const (
+	ReasonOutOfStock   RejectReason = "OUT_OF_STOCK"
+	ReasonBusyOrClosed RejectReason = "BUSY_OR_CLOSED"
+	ReasonCannotServe  RejectReason = "CANNOT_SERVE"
+	ReasonOther        RejectReason = "OTHER"
+	// ReasonExpired is stored by the auto-cancel job; clients cannot send it.
+	ReasonExpired RejectReason = "EXPIRED"
+)
+
+// ValidRejectReason reports whether r may be sent by a seller or operator.
+func ValidRejectReason(r RejectReason) bool {
+	switch r {
+	case ReasonOutOfStock, ReasonBusyOrClosed, ReasonCannotServe, ReasonOther:
+		return true
+	}
+	return false
+}
+
+// SellerOrderLock is a seller-order row read under FOR UPDATE with what a transition needs.
+type SellerOrderLock struct {
+	ID           int64
+	OrderID      int64
+	OrderNumber  string
+	BuyerID      int64
+	StoreID      int64
+	StoreName    string
+	OwnerID      int64
+	Status       OrderStatus
+	AcceptBy     *time.Time
+	CancelReason string
+}
+
+// SellerOrderChange is one applied transition. Nil fields keep their stored value.
+type SellerOrderChange struct {
+	ID           int64
+	Status       OrderStatus
+	At           time.Time
+	Note         *string
+	CancelReason *string
+	CancelNote   *string
+	CancelledBy  *string
 }
 
 // Actor is who performs a state transition. Role is "buyer", "seller", "operator" or "system".

@@ -26,4 +26,30 @@ type OrderRepository interface {
 	// List returns up to limit of the buyer's orders with id < afterID (0 for the first page), newest
 	// first, filtered to statuses unless nil. Reads load the whole page's details in three queries.
 	List(ctx context.Context, buyerID int64, statuses []domain.OrderStatus, afterID int64, limit int) ([]domain.Order, error)
+
+	// LockSellerOrder reads a seller-order with FOR UPDATE (only that row is locked). storeID 0
+	// matches any store; a missing seller-order or one of another store is domain.ErrNotFound.
+	LockSellerOrder(ctx context.Context, id, storeID int64) (domain.SellerOrderLock, error)
+	// UpdateSellerOrder stores a transition (status, updated_at and the non-nil fields) and appends
+	// its seller-order history row.
+	UpdateSellerOrder(ctx context.Context, c domain.SellerOrderChange) error
+	// RestoreStock gives every item's quantity back to its product with a plain UPDATE, after
+	// locking the products in ascending id order. An OUT_OF_STOCK product with stock again turns AVAILABLE.
+	RestoreStock(ctx context.Context, sellerOrderID int64) error
+	// LockOrderStatuses locks the order row (FOR UPDATE) and returns its stored status and the
+	// statuses of all its seller-orders, read after the lock was granted.
+	LockOrderStatuses(ctx context.Context, orderID int64) (domain.OrderStatus, []domain.OrderStatus, error)
+	// SetOrderStatus stores the order status and appends an order-level history row.
+	SetOrderStatus(ctx context.Context, orderID int64, status domain.OrderStatus, at time.Time) error
+	// GetStoreOrder returns the seller's view of a seller-order of storeID (0 matches any store),
+	// or domain.ErrNotFound.
+	GetStoreOrder(ctx context.Context, storeID, id int64) (domain.StoreOrder, error)
+	// ListStoreOrders returns up to limit of the store's seller-orders in statuses with id < afterID
+	// (0 for the first page), newest first, with items and history.
+	ListStoreOrders(ctx context.Context, storeID int64, statuses []domain.OrderStatus, afterID int64, limit int) ([]domain.StoreOrder, error)
+	// CountStoreOrders counts the store's seller-orders per seller tab in one query.
+	CountStoreOrders(ctx context.Context, storeID int64) (domain.StoreOrderCounts, error)
+	// OverdueSellerOrders returns up to limit CREATED seller-orders with accept_by <= now, locking
+	// them FOR UPDATE SKIP LOCKED (rows locked by others are passed over).
+	OverdueSellerOrders(ctx context.Context, now time.Time, limit int) ([]int64, error)
 }
