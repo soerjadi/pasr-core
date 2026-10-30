@@ -163,6 +163,7 @@ func TestSubmitReview_RatingAndTextValidation(t *testing.T) {
 		{"501 ascii", 5, strings.Repeat("a", 501)},
 		{"501 runes", 5, strings.Repeat("é", 501)},
 		{"501 after trim is 500 plus", 5, " " + strings.Repeat("a", 500) + "b"},
+		{"NUL", 5, "enak\x00sekali"},
 	} {
 		_, err := f.svc.SubmitReview(ctx, r.buyer, r.item, c.rating, c.text)
 		if !errors.Is(err, domain.ErrValidationFailed) {

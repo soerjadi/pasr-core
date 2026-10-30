@@ -29,6 +29,7 @@ func TestSubmitReview_HTTP(t *testing.T) {
 		"rating 0": map[string]any{"rating": 0}, "rating 6": map[string]any{"rating": 6},
 		"missing rating": map[string]any{"text": "x"},
 		"long text":      map[string]any{"rating": 5, "text": strings.Repeat("a", 501)},
+		"NUL in text":    map[string]any{"rating": 5, "text": "enak\u0000sekali"},
 		"bad body":       "nope",
 	} {
 		if r := env.Do(http.MethodPost, reviewPath(item), body, auth); r.Status != http.StatusBadRequest || code(t, r) != "VALIDATION_FAILED" {

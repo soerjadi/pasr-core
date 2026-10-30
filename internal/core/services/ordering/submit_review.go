@@ -21,6 +21,11 @@ func (s *service) SubmitReview(ctx context.Context, buyerID, orderItemID int64, 
 		tracer.RecordError(span, err)
 		return domain.Review{}, err
 	}
+	if strings.ContainsRune(text, 0) {
+		err := invalid("text must not contain NUL characters")
+		tracer.RecordError(span, err)
+		return domain.Review{}, err
+	}
 	if utf8.RuneCountInString(text) > maxReviewRunes {
 		err := invalid("text must be at most 500 characters")
 		tracer.RecordError(span, err)
