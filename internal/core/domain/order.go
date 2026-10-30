@@ -73,6 +73,8 @@ type OrderItem struct {
 	UnitPrice int64    `json:"unitPrice"`
 	LineTotal int64    `json:"lineTotal"`
 	Reviewed  bool     `json:"reviewed"`
+	// ImageKeys is the snapshot of the product's first image as stored; services turn it into Image.
+	ImageKeys *ImageKeys `json:"-"`
 }
 
 // SellerOrder matches the SellerOrder schema. Pickup fields are the snapshot taken at order time.
@@ -120,4 +122,38 @@ type StoreOrder struct {
 type Actor struct {
 	Role   string
 	UserID int64
+}
+
+// NewOrder is an order to insert: the buyer-level row with its seller-orders and their items.
+// CreatedAt is used for the order, its seller-orders and the initial CREATED history entries.
+type NewOrder struct {
+	Number       string
+	BuyerID      int64
+	Total        int64
+	Status       OrderStatus
+	CreatedAt    time.Time
+	SellerOrders []NewSellerOrder
+}
+
+// NewSellerOrder is one store's part of a NewOrder with the pickup snapshot taken from the store.
+type NewSellerOrder struct {
+	StoreID       int64
+	StoreName     string
+	WhatsApp      string
+	PickupAddress string
+	OpeningHours  string
+	Status        OrderStatus
+	Subtotal      int64
+	AcceptBy      time.Time
+	Items         []NewOrderItem
+}
+
+// NewOrderItem is one line of a NewSellerOrder: name, price and first image are snapshots.
+type NewOrderItem struct {
+	ProductID int64
+	Name      string
+	Image     *ImageKeys
+	Quantity  int32
+	UnitPrice int64
+	LineTotal int64
 }
