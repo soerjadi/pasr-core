@@ -36,7 +36,7 @@ func newQueryTracer(cfg config.Database) pgx.QueryTracer {
 		return nil
 	}
 
-	opts := []otelpgx.Option{otelpgx.WithTrimSQLInSpanName()}
+	var opts []otelpgx.Option // trimmed SQL in span names is the otelpgx default
 	if !cfg.TraceIncludeSQL {
 		opts = append(opts, otelpgx.WithDisableSQLStatementInAttributes())
 	}

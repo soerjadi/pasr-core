@@ -2,7 +2,6 @@ package migrations_test
 
 import (
 	"context"
-	"database/sql"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -123,8 +122,8 @@ func TestMigrationsDownThenUp(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var db *sql.DB = stdlib.OpenDB(*cfg.ConnConfig)
-	defer db.Close()
+	db := stdlib.OpenDB(*cfg.ConnConfig)
+	defer func() { _ = db.Close() }()
 	goose.SetBaseFS(migrations.FS)
 	if err := goose.SetDialect("postgres"); err != nil {
 		t.Fatal(err)

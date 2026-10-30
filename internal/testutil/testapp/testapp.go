@@ -134,7 +134,7 @@ func (e *Env) Do(method, path string, body any, opts ...Opt) *Resp {
 	if err != nil {
 		e.t.Fatalf("testapp: %s %s: %v", method, path, err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	b, err := io.ReadAll(res.Body)
 	if err != nil {
 		e.t.Fatalf("testapp: read body: %v", err)
@@ -213,7 +213,7 @@ func (e *Env) DoFile(method, path, field, filename, contentType string, data []b
 	if err != nil {
 		e.t.Fatalf("testapp: %s %s: %v", method, path, err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	b, err := io.ReadAll(res.Body)
 	if err != nil {
 		e.t.Fatalf("testapp: read body: %v", err)

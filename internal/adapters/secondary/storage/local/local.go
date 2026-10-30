@@ -94,7 +94,7 @@ func (s *Storage) Serve(w http.ResponseWriter, r *http.Request, key string) {
 		http.NotFound(w, r)
 		return
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	st, err := f.Stat()
 	if err != nil || st.IsDir() {
 		http.NotFound(w, r)

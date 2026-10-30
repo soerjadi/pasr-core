@@ -31,7 +31,7 @@ func slowPost(t *testing.T, h http.Handler) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	return res.StatusCode, nil
 }
 

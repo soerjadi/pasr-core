@@ -112,14 +112,14 @@ func buildListOwnedQuery(q domain.SellerProductQuery) (string, []any) {
 	b.WriteString(`SELECT ` + ownedColumns + ` FROM products p WHERE p.store_id = $1 AND p.deleted_at IS NULL`)
 	if q.Status != "" {
 		args = append(args, string(q.Status))
-		b.WriteString(fmt.Sprintf(" AND p.status = $%d", len(args)))
+		fmt.Fprintf(&b, " AND p.status = $%d", len(args))
 	}
 	if q.BeforeID > 0 {
 		args = append(args, q.BeforeID)
-		b.WriteString(fmt.Sprintf(" AND p.id < $%d", len(args)))
+		fmt.Fprintf(&b, " AND p.id < $%d", len(args))
 	}
 	args = append(args, q.Limit)
-	b.WriteString(fmt.Sprintf(" ORDER BY p.id DESC LIMIT $%d", len(args)))
+	fmt.Fprintf(&b, " ORDER BY p.id DESC LIMIT $%d", len(args))
 	return b.String(), args
 }
 

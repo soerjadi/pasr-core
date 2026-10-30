@@ -12,7 +12,7 @@ func verifyRaw(baseURL, phone, code string) int {
 	if err != nil {
 		return -1
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	return res.StatusCode
 }
 
@@ -30,6 +30,6 @@ func requestRaw(baseURL, phone, ip string) int {
 	if err != nil {
 		return -1
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	return res.StatusCode
 }

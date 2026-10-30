@@ -321,7 +321,7 @@ func TestLogout_EmptyOrMalformedBody204(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		res.Body.Close()
+		_ = res.Body.Close()
 		if res.StatusCode != http.StatusNoContent {
 			t.Fatalf("body %q: status %d", body, res.StatusCode)
 		}

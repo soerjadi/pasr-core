@@ -15,7 +15,7 @@ import (
 // deployment needs no migration files or goose CLI on the host. Applying is idempotent.
 func Migrate(ctx context.Context, pool *pgxpool.Pool) error {
 	sqlDB := stdlib.OpenDBFromPool(pool)
-	defer sqlDB.Close()
+	defer func() { _ = sqlDB.Close() }()
 
 	provider, err := goose.NewProvider(goose.DialectPostgres, sqlDB, migrations.FS)
 	if err != nil {

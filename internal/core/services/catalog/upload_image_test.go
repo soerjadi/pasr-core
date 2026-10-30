@@ -52,7 +52,6 @@ func (m *memStore) URL(key string) string { return "https://media.test/" + key }
 type fakeUploads struct {
 	mu       sync.Mutex
 	rows     map[int64]domain.ImageKeys
-	created  map[int64]time.Time
 	next     int64
 	orphans  []domain.ImageKeys
 	detached []domain.ImageKeys
