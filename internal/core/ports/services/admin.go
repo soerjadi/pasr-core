@@ -37,4 +37,16 @@ type AdminService interface {
 	// DeleteCategory removes a category no store or product (deleted ones included) uses; one in use
 	// is 409 CATEGORY_IN_USE.
 	DeleteCategory(ctx context.Context, id int64) error
+
+	// ListAdCampaigns pages every campaign newest first, inactive and out-of-window ones included.
+	ListAdCampaigns(ctx context.Context, cursor string, limit int) (domain.Page[domain.AdCampaign], error)
+	// CreateAdCampaign stores a campaign; active defaults to true and priority to 0. placement must
+	// be a known key, advertiser, title and label non-blank, targetUrl and the three image URLs
+	// absolute https, and startsAt before endsAt when both are set, else domain.ErrValidationFailed.
+	CreateAdCampaign(ctx context.Context, in domain.AdCampaignInput) (domain.AdCampaign, error)
+	// UpdateAdCampaign merges the provided fields into the campaign and validates the result under
+	// the CreateAdCampaign rules; an unknown id is domain.ErrNotFound.
+	UpdateAdCampaign(ctx context.Context, id int64, in domain.AdCampaignInput) (domain.AdCampaign, error)
+	// DeleteAdCampaign removes a campaign; an unknown id is domain.ErrNotFound.
+	DeleteAdCampaign(ctx context.Context, id int64) error
 }

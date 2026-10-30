@@ -121,6 +121,61 @@ func (h *Handler) DeleteCategory(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (h *Handler) ListAdCampaigns(w http.ResponseWriter, r *http.Request) {
+	limit, ok := limitParam(w, r)
+	if !ok {
+		return
+	}
+	out, err := h.admin.ListAdCampaigns(r.Context(), r.URL.Query().Get("cursor"), limit)
+	if err != nil {
+		rest.WriteServiceError(w, r, err)
+		return
+	}
+	rest.WriteJSON(w, http.StatusOK, out)
+}
+
+func (h *Handler) CreateAdCampaign(w http.ResponseWriter, r *http.Request) {
+	var req domain.AdCampaignInput
+	if !decode(w, r, &req) {
+		return
+	}
+	out, err := h.admin.CreateAdCampaign(r.Context(), req)
+	if err != nil {
+		rest.WriteServiceError(w, r, err)
+		return
+	}
+	rest.WriteJSON(w, http.StatusCreated, out)
+}
+
+func (h *Handler) UpdateAdCampaign(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathID(w, r)
+	if !ok {
+		return
+	}
+	var req domain.AdCampaignInput
+	if !decode(w, r, &req) {
+		return
+	}
+	out, err := h.admin.UpdateAdCampaign(r.Context(), id, req)
+	if err != nil {
+		rest.WriteServiceError(w, r, err)
+		return
+	}
+	rest.WriteJSON(w, http.StatusOK, out)
+}
+
+func (h *Handler) DeleteAdCampaign(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathID(w, r)
+	if !ok {
+		return
+	}
+	if err := h.admin.DeleteAdCampaign(r.Context(), id); err != nil {
+		rest.WriteServiceError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // pathID parses the {id} path value; a malformed id can never match a row, so it is a 404.
 func pathID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)

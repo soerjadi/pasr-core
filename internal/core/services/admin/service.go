@@ -17,6 +17,7 @@ type Deps struct {
 	Stores     repository.StoreRepository
 	Products   repository.ProductRepository
 	Categories repository.CategoryRepository
+	Ads        repository.AdRepository
 	Notify     services.NotifyService
 	Tx         repository.TxManager
 }

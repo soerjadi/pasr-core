@@ -89,6 +89,10 @@ var adminRoutes = []struct{ method, path, pattern string }{
 	{http.MethodPost, "/v1/admin/categories", "POST /v1/admin/categories"},
 	{http.MethodPatch, "/v1/admin/categories/1", "PATCH /v1/admin/categories/{id}"},
 	{http.MethodDelete, "/v1/admin/categories/999999", "DELETE /v1/admin/categories/{id}"},
+	{http.MethodGet, "/v1/admin/ad-campaigns", "GET /v1/admin/ad-campaigns"},
+	{http.MethodPost, "/v1/admin/ad-campaigns", "POST /v1/admin/ad-campaigns"},
+	{http.MethodPatch, "/v1/admin/ad-campaigns/1", "PATCH /v1/admin/ad-campaigns/{id}"},
+	{http.MethodDelete, "/v1/admin/ad-campaigns/1", "DELETE /v1/admin/ad-campaigns/{id}"},
 }
 
 func TestAdmin_RequiresOperatorRole(t *testing.T) {

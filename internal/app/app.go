@@ -199,6 +199,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...Options) (*App, error)
 		Stores:     storerepo.NewStoreRepository(exec),
 		Products:   productrepo.NewProductRepository(exec),
 		Categories: categoryrepo.NewCategoryRepository(exec),
+		Ads:        adrepo.NewAdRepository(exec),
 		Notify:     notify,
 		Tx:         exec,
 	})
