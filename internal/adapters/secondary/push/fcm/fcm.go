@@ -58,7 +58,7 @@ func NewFromFile(_ context.Context, credentialsFile string) (push.Pusher, error)
 	// The token source keeps this context for every refresh, so it must outlive the caller's startup ctx;
 	// its own HTTP client bounds the token endpoint call.
 	tokenCtx := context.WithValue(context.Background(), oauth2.HTTPClient, &http.Client{Timeout: requestTimeout})
-	creds, err := google.CredentialsFromJSON(tokenCtx, raw, scope)
+	creds, err := google.CredentialsFromJSONWithType(tokenCtx, raw, google.ServiceAccount, scope)
 	if err != nil {
 		return nil, fmt.Errorf("fcm.NewFromFile parse credentials: %w", err)
 	}
@@ -100,7 +100,7 @@ func (p *pusher) Send(ctx context.Context, token string, n domain.Notification) 
 	if err != nil {
 		return false, fmt.Errorf("fcm.Send do: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	raw, _ := io.ReadAll(io.LimitReader(res.Body, 64<<10))
 	if res.StatusCode/100 == 2 {
 		return false, nil
