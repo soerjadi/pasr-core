@@ -2,6 +2,7 @@ package router
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/admin"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/ads"
@@ -15,6 +16,9 @@ import (
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/order"
 	"github.com/oemah/nusantara/core/internal/adapters/primary/rest/social"
 )
+
+// UploadTimeout is how long POST /v1/me/images may take to read the request and write the response.
+const UploadTimeout = 60 * time.Second
 
 type Handlers struct {
 	Admin    *admin.Handler
@@ -115,7 +119,9 @@ func New(h Handlers, allowedOrigins []string, ping func(*http.Request) error) ht
 	}
 
 	if h.Media != nil {
-		mux.Handle("POST /v1/me/images", h.Authenticate(http.HandlerFunc(h.Media.Upload)))
+		// Uploads get their own deadline: the server's 15s Read/WriteTimeout is too short for a
+		// multi-megabyte photo over a slow mobile connection.
+		mux.Handle("POST /v1/me/images", middleware.ExtendDeadline(UploadTimeout)(h.Authenticate(http.HandlerFunc(h.Media.Upload))))
 		if h.Media.HasFiles() {
 			mux.HandleFunc("GET /media/{key...}", h.Media.Serve)
 		}

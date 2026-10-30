@@ -20,6 +20,24 @@ func (s *statusRecorder) WriteHeader(code int) {
 	s.ResponseWriter.WriteHeader(code)
 }
 
+// Unwrap lets http.ResponseController reach the connection (deadlines, flushing) through the recorder.
+func (s *statusRecorder) Unwrap() http.ResponseWriter { return s.ResponseWriter }
+
+// ExtendDeadline gives one route d to read its request and write its response, instead of the
+// server-wide Read/WriteTimeout (15s), for example image uploads over slow mobile networks. It is a
+// no-op when the writer does not support deadlines.
+func ExtendDeadline(d time.Duration) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			rc := http.NewResponseController(w)
+			until := time.Now().Add(d)
+			_ = rc.SetReadDeadline(until)
+			_ = rc.SetWriteDeadline(until)
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 // Tracing starts a server span per request so downstream spans and log lines share its trace_id.
 // The span is renamed to the matched route pattern after routing, keeping span names low-cardinality.
 // It must wrap the mux and sit outside Logger and Recover.
