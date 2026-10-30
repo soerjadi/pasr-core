@@ -6,9 +6,12 @@ import (
 	"testing"
 
 	"github.com/oemah/nusantara/core/internal/core/domain"
+	"github.com/oemah/nusantara/core/internal/core/ports/secondary/repository"
 )
 
+// fakeCategories implements only GetAll; the embedded interface panics on any other method.
 type fakeCategories struct {
+	repository.CategoryRepository
 	items []domain.Category
 	err   error
 }

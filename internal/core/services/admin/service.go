@@ -14,10 +14,11 @@ import (
 
 // Deps are the collaborators of the admin service.
 type Deps struct {
-	Stores   repository.StoreRepository
-	Products repository.ProductRepository
-	Notify   services.NotifyService
-	Tx       repository.TxManager
+	Stores     repository.StoreRepository
+	Products   repository.ProductRepository
+	Categories repository.CategoryRepository
+	Notify     services.NotifyService
+	Tx         repository.TxManager
 }
 
 type service struct {

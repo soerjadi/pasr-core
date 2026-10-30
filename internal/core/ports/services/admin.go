@@ -27,4 +27,14 @@ type AdminService interface {
 	// domain.ErrNotFound). status must be AVAILABLE, OUT_OF_STOCK or HIDDEN, and AVAILABLE needs
 	// stock; halalCertNo is trimmed, at most 100 characters, and "" clears it.
 	UpdateProduct(ctx context.Context, id int64, patch domain.AdminProductPatch) (domain.AdminProduct, error)
+
+	// CreateCategory adds a category: name (at most 60 characters) and iconKey (at most 40) are
+	// required, trimmed and free of NUL characters, else domain.ErrValidationFailed.
+	CreateCategory(ctx context.Context, in domain.CategoryInput) (domain.Category, error)
+	// UpdateCategory applies the non-nil fields under the CreateCategory rules; unknown ids are
+	// domain.ErrNotFound.
+	UpdateCategory(ctx context.Context, id int64, in domain.CategoryInput) (domain.Category, error)
+	// DeleteCategory removes a category no store or product (deleted ones included) uses; one in use
+	// is 409 CATEGORY_IN_USE.
+	DeleteCategory(ctx context.Context, id int64) error
 }

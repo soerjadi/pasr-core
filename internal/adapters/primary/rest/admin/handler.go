@@ -79,6 +79,48 @@ func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	rest.WriteJSON(w, http.StatusOK, out)
 }
 
+func (h *Handler) CreateCategory(w http.ResponseWriter, r *http.Request) {
+	var req domain.CategoryInput
+	if !decode(w, r, &req) {
+		return
+	}
+	out, err := h.admin.CreateCategory(r.Context(), req)
+	if err != nil {
+		rest.WriteServiceError(w, r, err)
+		return
+	}
+	rest.WriteJSON(w, http.StatusCreated, out)
+}
+
+func (h *Handler) UpdateCategory(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathID(w, r)
+	if !ok {
+		return
+	}
+	var req domain.CategoryInput
+	if !decode(w, r, &req) {
+		return
+	}
+	out, err := h.admin.UpdateCategory(r.Context(), id, req)
+	if err != nil {
+		rest.WriteServiceError(w, r, err)
+		return
+	}
+	rest.WriteJSON(w, http.StatusOK, out)
+}
+
+func (h *Handler) DeleteCategory(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathID(w, r)
+	if !ok {
+		return
+	}
+	if err := h.admin.DeleteCategory(r.Context(), id); err != nil {
+		rest.WriteServiceError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // pathID parses the {id} path value; a malformed id can never match a row, so it is a 404.
 func pathID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
