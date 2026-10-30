@@ -78,6 +78,12 @@ func New(h Handlers, allowedOrigins []string, ping func(*http.Request) error) ht
 		mux.Handle("GET /v1/me/store/products/{id}", h.Authenticate(http.HandlerFunc(h.MyStore.GetProduct)))
 		mux.Handle("PATCH /v1/me/store/products/{id}", h.Authenticate(http.HandlerFunc(h.MyStore.UpdateProduct)))
 		mux.Handle("DELETE /v1/me/store/products/{id}", h.Authenticate(http.HandlerFunc(h.MyStore.DeleteProduct)))
+		mux.Handle("GET /v1/me/store/orders", h.Authenticate(http.HandlerFunc(h.MyStore.ListOrders)))
+		mux.Handle("GET /v1/me/store/orders/{id}", h.Authenticate(http.HandlerFunc(h.MyStore.GetOrder)))
+		mux.Handle("POST /v1/me/store/orders/{id}/accept", h.Authenticate(http.HandlerFunc(h.MyStore.AcceptOrder)))
+		mux.Handle("POST /v1/me/store/orders/{id}/reject", h.Authenticate(http.HandlerFunc(h.MyStore.RejectOrder)))
+		mux.Handle("POST /v1/me/store/orders/{id}/ready", h.Authenticate(http.HandlerFunc(h.MyStore.ReadyOrder)))
+		mux.Handle("POST /v1/me/store/orders/{id}/complete", h.Authenticate(http.HandlerFunc(h.MyStore.CompleteOrder)))
 	}
 
 	if h.Order != nil {

@@ -198,7 +198,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...Options) (*App, error)
 		Catalog:      catalogrest.NewHandler(catalog),
 		Media:        media.NewHandler(catalog, cfg.Images.MaxBytes, files),
 		Me:           me.NewHandler(account),
-		MyStore:      mystore.NewHandler(storeMgmt),
+		MyStore:      mystore.NewHandler(storeMgmt, ordering),
 		Order:        order.NewHandler(ordering),
 		Social:       social.NewHandler(catalog),
 		Authenticate: middleware.Auth(identity.ParseAccessToken),

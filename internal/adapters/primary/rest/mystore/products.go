@@ -14,11 +14,12 @@ import (
 const maxBodyBytes = 16 << 10
 
 type Handler struct {
-	store services.StoreManagementService
+	store    services.StoreManagementService
+	ordering services.OrderingService
 }
 
-func NewHandler(store services.StoreManagementService) *Handler {
-	return &Handler{store: store}
+func NewHandler(store services.StoreManagementService, ordering services.OrderingService) *Handler {
+	return &Handler{store: store, ordering: ordering}
 }
 
 // Every method must run behind the Auth middleware.
