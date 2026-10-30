@@ -13,3 +13,21 @@ type Review struct {
 
 // ReviewPage matches the ReviewPage schema.
 type ReviewPage = Page[Review]
+
+// ReviewTarget is an order item a buyer may review, with the rows its rating counts toward.
+type ReviewTarget struct {
+	ItemID            int64
+	ProductID         int64
+	StoreID           int64
+	SellerOrderStatus OrderStatus
+}
+
+// NewReview is a review to insert.
+type NewReview struct {
+	OrderItemID int64
+	ProductID   int64
+	StoreID     int64
+	BuyerID     int64
+	Rating      int32
+	Text        string
+}

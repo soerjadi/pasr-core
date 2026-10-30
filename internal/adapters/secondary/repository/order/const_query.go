@@ -196,3 +196,12 @@ const overdueQuery = `
 	LIMIT $2
 	FOR UPDATE SKIP LOCKED
 `
+
+// reviewTargetQuery matches only items of the buyer's own orders.
+const reviewTargetQuery = `
+	SELECT oi.id, oi.product_id, so.store_id, so.status
+	FROM order_items oi
+	JOIN seller_orders so ON so.id = oi.seller_order_id
+	JOIN orders o ON o.id = so.order_id
+	WHERE oi.id = $2 AND o.buyer_id = $1
+`

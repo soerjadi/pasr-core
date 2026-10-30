@@ -27,6 +27,10 @@ type OrderRepository interface {
 	// first, filtered to statuses unless nil. Reads load the whole page's details in three queries.
 	List(ctx context.Context, buyerID int64, statuses []domain.OrderStatus, afterID int64, limit int) ([]domain.Order, error)
 
+	// GetReviewTarget returns the item and its seller-order status when the item belongs to an order
+	// of buyerID, otherwise domain.ErrNotFound.
+	GetReviewTarget(ctx context.Context, buyerID, orderItemID int64) (domain.ReviewTarget, error)
+
 	// LockSellerOrder reads a seller-order with FOR UPDATE (only that row is locked). storeID 0
 	// matches any store; a missing seller-order or one of another store is domain.ErrNotFound.
 	LockSellerOrder(ctx context.Context, id, storeID int64) (domain.SellerOrderLock, error)
