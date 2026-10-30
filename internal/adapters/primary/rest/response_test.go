@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgconn"
+
 	"github.com/oemah/nusantara/core/internal/core/domain"
 )
 
@@ -28,6 +30,9 @@ func TestWriteServiceError_CodedError(t *testing.T) {
 		{"plain not found", domain.ErrNotFound, 404, "NOT_FOUND", "not found"},
 		{"plain unprocessable", domain.ErrUnprocessable, 422, "UNPROCESSABLE", "unprocessable"},
 		{"plain too many", domain.ErrTooManyRequests, 429, "TOO_MANY_REQUESTS", "too many requests"},
+		{"statement timeout", fmt.Errorf("repo: %w", &pgconn.PgError{Code: "57014"}), 503, "SERVICE_UNAVAILABLE", "service temporarily unavailable, retry later"},
+		{"NUL in text", fmt.Errorf("repo: %w", &pgconn.PgError{Code: "22021"}), 400, "VALIDATION_FAILED", "text must not contain NUL characters"},
+		{"other pg error", &pgconn.PgError{Code: "23505"}, 500, "INTERNAL", "internal server error"},
 		{"other", errors.New("boom"), 500, "INTERNAL", "internal server error"},
 	}
 	for _, tc := range tests {
@@ -45,5 +50,13 @@ func TestWriteServiceError_CodedError(t *testing.T) {
 				t.Fatalf("got %+v, want code=%s message=%s", got, tc.code, tc.message)
 			}
 		})
+	}
+}
+
+func TestWriteServiceError_StatementTimeoutIsRetryable(t *testing.T) {
+	rec := httptest.NewRecorder()
+	WriteServiceError(rec, httptest.NewRequest(http.MethodGet, "/", nil), &pgconn.PgError{Code: "57014"})
+	if rec.Code != http.StatusServiceUnavailable || rec.Header().Get("Retry-After") == "" {
+		t.Fatalf("status %d Retry-After %q", rec.Code, rec.Header().Get("Retry-After"))
 	}
 }

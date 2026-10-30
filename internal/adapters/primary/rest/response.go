@@ -51,10 +51,34 @@ func WriteServiceError(w http.ResponseWriter, r *http.Request, err error) {
 		WriteError(w, http.StatusUnprocessableEntity, "UNPROCESSABLE", err.Error())
 	case errors.Is(err, domain.ErrTooManyRequests):
 		WriteError(w, http.StatusTooManyRequests, "TOO_MANY_REQUESTS", err.Error())
+	case sqlState(err) == sqlQueryCanceled:
+		// statement_timeout (or a cancelled query): the database is overloaded, so retrying later can succeed.
+		w.Header().Set("Retry-After", "1")
+		WriteError(w, http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE", "service temporarily unavailable, retry later")
+	case sqlState(err) == sqlCharacterNotInRepertoire || sqlState(err) == sqlUntranslatableCharacter:
+		// Free text PostgreSQL cannot store (a NUL character) is the client's input error.
+		WriteError(w, http.StatusBadRequest, "VALIDATION_FAILED", "text must not contain NUL characters")
 	default:
 		log.ErrorCtx(r.Context(), "unhandled service error", log.Field("error", err), log.Field("path", r.URL.Path))
 		WriteError(w, http.StatusInternalServerError, "INTERNAL", "internal server error")
 	}
+}
+
+// SQLSTATE codes mapped to a client-facing status instead of 500.
+const (
+	sqlQueryCanceled            = "57014"
+	sqlCharacterNotInRepertoire = "22021"
+	sqlUntranslatableCharacter  = "22P05"
+)
+
+// sqlState returns the PostgreSQL SQLSTATE in err's chain, or "". The driver's error type
+// (pgconn.PgError) exposes SQLState, so the REST adapter needs no database import.
+func sqlState(err error) string {
+	var se interface{ SQLState() string }
+	if errors.As(err, &se) {
+		return se.SQLState()
+	}
+	return ""
 }
 
 func kindStatus(kind error) int {
