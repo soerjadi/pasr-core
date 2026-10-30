@@ -82,6 +82,9 @@ func New(h Handlers, allowedOrigins []string, ping func(*http.Request) error) ht
 
 	if h.Order != nil {
 		mux.HandleFunc("POST /v1/cart/validate", h.Order.ValidateCart)
+		mux.Handle("POST /v1/orders", h.Authenticate(http.HandlerFunc(h.Order.CreateOrder)))
+		mux.Handle("GET /v1/orders", h.Authenticate(http.HandlerFunc(h.Order.ListOrders)))
+		mux.Handle("GET /v1/orders/{orderId}", h.Authenticate(http.HandlerFunc(h.Order.GetOrder)))
 	}
 
 	if h.Social != nil {
