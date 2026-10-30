@@ -2,6 +2,7 @@ package router
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -26,5 +27,15 @@ func TestRoutes(t *testing.T) {
 		if rec.Code != want {
 			t.Errorf("%s: got %d want %d", path, rec.Code, want)
 		}
+	}
+}
+
+func TestHealthzFailsWhenDBDown(t *testing.T) {
+	down := func(*http.Request) error { return errors.New("connection refused") }
+	h := New(Handlers{Category: category.NewHandler(stubCatalog{})}, []string{"*"}, down)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/healthz", nil))
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("healthz with the database down: %d, want 503", rec.Code)
 	}
 }
