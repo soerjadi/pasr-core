@@ -53,6 +53,7 @@ func (f *fx) patchCampaign(t *testing.T, id int64, body any) domain.AdCampaign {
 	t.Helper()
 	r := f.do(http.MethodPatch, path("/v1/admin/ad-campaigns/%d", id), body)
 	assertStatus(t, r, http.StatusOK)
+	contract.AssertShape(t, "updateAdCampaign", r.Body)
 	var c domain.AdCampaign
 	r.JSON(&c)
 	return c
@@ -63,6 +64,7 @@ func TestAdCampaigns_CRUDValidatesURLLabelPlacement(t *testing.T) {
 
 	r := f.do(http.MethodPost, "/v1/admin/ad-campaigns", validCampaign())
 	assertStatus(t, r, http.StatusCreated)
+	contract.AssertShape(t, "createAdCampaign", r.Body)
 	var c domain.AdCampaign
 	r.JSON(&c)
 	if c.ID == 0 || c.Placement != "home_sponsored_card" || c.Label != "Kemitraan" || !c.Active || c.Priority != 5 ||

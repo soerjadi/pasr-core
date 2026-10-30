@@ -15,6 +15,7 @@ func (f *fx) storeAction(t *testing.T, id int64, action string) domain.AdminStor
 	t.Helper()
 	r := f.do(http.MethodPost, path("/v1/admin/stores/%d/%s", id, action), nil)
 	assertStatus(t, r, http.StatusOK)
+	contract.AssertShape(t, action+"AdminStore", r.Body)
 	var s domain.AdminStore
 	r.JSON(&s)
 	return s

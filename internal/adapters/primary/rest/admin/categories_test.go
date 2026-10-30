@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/oemah/nusantara/core/internal/core/domain"
+	"github.com/oemah/nusantara/core/internal/testutil/contract"
 	"github.com/oemah/nusantara/core/internal/testutil/seed"
 )
 
@@ -15,6 +16,7 @@ func (f *fx) createCategory(t *testing.T, body map[string]any) domain.Category {
 	t.Helper()
 	r := f.do(http.MethodPost, "/v1/admin/categories", body)
 	assertStatus(t, r, http.StatusCreated)
+	contract.AssertShape(t, "createAdminCategory", r.Body)
 	var c domain.Category
 	r.JSON(&c)
 	t.Cleanup(func() {
@@ -54,6 +56,7 @@ func TestCategories_CRUDAndDeleteBlockedWhenInUse(t *testing.T) {
 
 	r := f.do(http.MethodPatch, path("/v1/admin/categories/%d", c.ID), map[string]any{"name": "Jamu"})
 	assertStatus(t, r, http.StatusOK)
+	contract.AssertShape(t, "updateAdminCategory", r.Body)
 	var patched domain.Category
 	r.JSON(&patched)
 	if patched.ID != c.ID || patched.Name != "Jamu" || patched.IconKey != "herbal" {

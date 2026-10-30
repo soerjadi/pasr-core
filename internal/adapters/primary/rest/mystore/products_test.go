@@ -272,6 +272,7 @@ func TestUpdateProduct_StockZeroBecomesOutOfStock(t *testing.T) {
 	if r.Status != http.StatusOK || p.Status != domain.ProductOutOfStock || p.Stock != 0 {
 		t.Fatalf("got %d %s", r.Status, r.Body)
 	}
+	contract.AssertShape(t, "updateMyProduct", r.Body)
 }
 
 func TestUpdateProduct_RestockClearsOutOfStock(t *testing.T) {

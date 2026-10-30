@@ -60,6 +60,7 @@ func (f *storeOrder) mustPost(t *testing.T, action string, body any) domain.Stor
 	if r.Status != http.StatusOK {
 		t.Fatalf("%s: %d %s", action, r.Status, r.Body)
 	}
+	contract.AssertShape(t, action+"MyStoreOrder", r.Body)
 	var so domain.StoreOrder
 	r.JSON(&so)
 	return so

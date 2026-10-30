@@ -49,6 +49,7 @@ func (f *fx) orderAction(t *testing.T, id int64, action string, body any) domain
 	t.Helper()
 	r := f.do(http.MethodPost, path("/v1/admin/seller-orders/%d/%s", id, action), body)
 	assertStatus(t, r, http.StatusOK)
+	contract.AssertShape(t, action+"AdminSellerOrder", r.Body)
 	var so domain.StoreOrder
 	r.JSON(&so)
 	return so

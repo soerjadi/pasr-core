@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/oemah/nusantara/core/internal/core/domain"
+	"github.com/oemah/nusantara/core/internal/testutil/contract"
 	"github.com/oemah/nusantara/core/internal/testutil/seed"
 )
 
@@ -14,6 +15,7 @@ func (f *fx) patchProduct(t *testing.T, id int64, body any) domain.AdminProduct 
 	t.Helper()
 	r := f.do(http.MethodPatch, path("/v1/admin/products/%d", id), body)
 	assertStatus(t, r, http.StatusOK)
+	contract.AssertShape(t, "updateAdminProduct", r.Body)
 	var p domain.AdminProduct
 	r.JSON(&p)
 	return p

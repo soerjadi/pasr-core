@@ -77,7 +77,7 @@ func TestUpdateMyStore_PartialPatchKeepsOtherFields(t *testing.T) {
 	if r.Status != http.StatusOK {
 		t.Fatalf("%d %s", r.Status, r.Body)
 	}
-	contract.AssertShape(t, "getMyStore", r.Body)
+	contract.AssertShape(t, "updateMyStore", r.Body)
 	var m domain.MyStore
 	r.JSON(&m)
 	if m.Name != "Toko Baru" || m.Description != "" || m.Address != "Jl. Lama" || m.OwnerName != "Pemilik" ||
