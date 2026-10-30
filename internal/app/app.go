@@ -182,6 +182,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...Options) (*App, error)
 	ordering := ordersvc.NewService(
 		cartrepo.NewCartRepository(exec),
 		orderrepo.NewOrderRepository(exec),
+		reviewrepo.NewReviewRepository(exec),
 		idemrepo.NewIdempotencyRepository(exec),
 		storerepo.NewStoreRepository(exec),
 		exec, notify, opt.Storage, opt.Clock,

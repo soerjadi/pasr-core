@@ -23,6 +23,7 @@ type Config struct {
 type service struct {
 	carts   repository.CartRepository
 	orders  repository.OrderRepository
+	reviews repository.ReviewRepository
 	keys    repository.IdempotencyRepository
 	stores  repository.StoreRepository
 	tx      repository.TxManager
@@ -35,6 +36,7 @@ type service struct {
 func NewService(
 	carts repository.CartRepository,
 	orders repository.OrderRepository,
+	reviews repository.ReviewRepository,
 	keys repository.IdempotencyRepository,
 	stores repository.StoreRepository,
 	tx repository.TxManager,
@@ -46,7 +48,7 @@ func NewService(
 	if cfg.Location == nil {
 		cfg.Location = time.UTC
 	}
-	return &service{carts: carts, orders: orders, keys: keys, stores: stores, tx: tx, notify: notify, storage: objects, clock: clock, cfg: cfg}
+	return &service{carts: carts, orders: orders, reviews: reviews, keys: keys, stores: stores, tx: tx, notify: notify, storage: objects, clock: clock, cfg: cfg}
 }
 
 func invalid(msg string) error {

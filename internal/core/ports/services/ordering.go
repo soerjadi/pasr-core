@@ -29,6 +29,13 @@ type OrderingService interface {
 	// READY or DONE (domain.TabStatuses); other values and malformed cursors are ErrValidationFailed.
 	ListOrders(ctx context.Context, buyerID int64, tab, cursor string, limit int) (domain.Page[domain.Order], error)
 
+	// SubmitReview reviews an item of one of the buyer's orders, once. Items of other buyers or that
+	// do not exist are domain.ErrNotFound; a seller-order that is not COMPLETED is 409
+	// ORDER_NOT_COMPLETED and a second review 409 ALREADY_REVIEWED. rating is 1 to 5 and text, trimmed,
+	// at most 500 characters, else domain.ErrValidationFailed. The review and the product and store
+	// rating aggregates are written in one transaction.
+	SubmitReview(ctx context.Context, buyerID, orderItemID int64, rating int32, text string) (domain.Review, error)
+
 	// ListStoreOrders pages the owner's store's seller-orders newest first. tab is NEW (also for ""),
 	// PROCESSING or DONE (domain.SellerTabStatuses); Counts cover every tab. Without a store 409 NO_STORE.
 	ListStoreOrders(ctx context.Context, ownerID int64, tab, cursor string, limit int) (domain.StoreOrderPage, error)
