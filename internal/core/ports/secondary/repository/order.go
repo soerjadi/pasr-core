@@ -8,6 +8,9 @@ import (
 )
 
 type OrderRepository interface {
+	// SetStatementTimeout bounds each following statement of the current transaction (SET LOCAL
+	// statement_timeout), lock waits included. Outside a transaction it has no lasting effect.
+	SetStatementTimeout(ctx context.Context, d time.Duration) error
 	// NextOrderNumber atomically takes the next sequence of day's calendar date (in day's location,
 	// pass a WIB time) and formats it as NM-YYYYMMDD-NNN. Inside a transaction the counter row
 	// stays locked until it ends, so numbers are gap-free per committed day.

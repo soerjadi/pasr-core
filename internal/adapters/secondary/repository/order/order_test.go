@@ -257,3 +257,39 @@ func TestListQuery_UsesBuyerIndex(t *testing.T) {
 		}
 	}
 }
+
+func TestSetStatementTimeout_LocalToTransaction(t *testing.T) {
+	pool, exec, r := setup(t)
+	ctx := context.Background()
+	err := exec.WithTx(ctx, func(ctx context.Context) error {
+		if err := r.SetStatementTimeout(ctx, 5*time.Second); err != nil {
+			return err
+		}
+		var v string
+		if err := exec.QueryRow(ctx, `SHOW statement_timeout`).Scan(&v); err != nil {
+			return err
+		}
+		if v != "5s" {
+			t.Errorf("inside tx: %q", v)
+		}
+		_, err := exec.Exec(ctx, `SELECT pg_sleep(0.2)`) // well under the limit
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = exec.WithTx(ctx, func(ctx context.Context) error {
+		if err := r.SetStatementTimeout(ctx, 50*time.Millisecond); err != nil {
+			return err
+		}
+		_, err := exec.Exec(ctx, `SELECT pg_sleep(1)`)
+		return err
+	})
+	if err == nil {
+		t.Fatal("statement over the timeout must fail")
+	}
+	var v string
+	if err := pool.QueryRow(ctx, `SHOW statement_timeout`).Scan(&v); err != nil || v != "0" {
+		t.Fatalf("leaked to the pool: %q %v", v, err)
+	}
+}

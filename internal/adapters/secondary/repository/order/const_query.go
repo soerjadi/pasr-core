@@ -82,3 +82,7 @@ const historyQuery = `
 	WHERE order_id = ANY($1) AND seller_order_id IS NULL
 	ORDER BY order_id, at, id
 `
+
+// statementTimeoutQuery bounds every later statement, lock waits included, of the current transaction.
+// SET does not take bind parameters, so set_config is used with is_local = true.
+const statementTimeoutQuery = `SELECT set_config('statement_timeout', $1, true)`
