@@ -164,6 +164,41 @@ func TestListStoreOrders_TabsAndCounts(t *testing.T) {
 	}
 }
 
+func TestListAllStoreOrders_EveryStoreByStatus(t *testing.T) {
+	f := setupOrders(t)
+	ctx := context.Background()
+	buyer := seed.User(t, f.pool, "", "Budi")
+	a, b := newShop(t, f, "A"), newShop(t, f, "B")
+	o := f.place(t, buyer, 1, a, b)
+	soA, soB := soOf(t, o, a.store), soOf(t, o, b.store)
+	if _, err := f.svc.Accept(ctx, operator, soA); err != nil {
+		t.Fatal(err)
+	}
+
+	all, err := f.svc.ListAllStoreOrders(ctx, "", "", 20)
+	if err != nil || len(all.Items) != 2 || all.Items[0].ID != soB || all.Items[0].StoreID != b.store ||
+		all.Items[1].ID != soA || all.Items[1].StoreID != a.store || all.Items[1].StoreName != "A" || len(all.Items[1].Items) != 1 {
+		t.Fatalf("all: %v %+v", err, all)
+	}
+	created, err := f.svc.ListAllStoreOrders(ctx, "CREATED", "", 20)
+	if err != nil || len(created.Items) != 1 || created.Items[0].ID != soB {
+		t.Fatalf("created: %v %+v", err, created)
+	}
+	first, err := f.svc.ListAllStoreOrders(ctx, "", "", 1)
+	if err != nil || len(first.Items) != 1 || first.NextCursor == nil {
+		t.Fatalf("first: %v %+v", err, first)
+	}
+	rest, err := f.svc.ListAllStoreOrders(ctx, "", *first.NextCursor, 1)
+	if err != nil || len(rest.Items) != 1 || rest.Items[0].ID != soA || rest.NextCursor != nil {
+		t.Fatalf("rest: %v %+v", err, rest)
+	}
+	for _, bad := range []string{"NEW", "created", "EXPIRED"} {
+		if _, err := f.svc.ListAllStoreOrders(ctx, bad, "", 20); !errors.Is(err, domain.ErrValidationFailed) {
+			t.Fatalf("%s: %v", bad, err)
+		}
+	}
+}
+
 func TestListStoreOrders_OnlyOwnStore(t *testing.T) {
 	f := setupOrders(t)
 	ctx := context.Background()

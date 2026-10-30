@@ -46,3 +46,30 @@ func (s *service) ListStoreOrders(ctx context.Context, ownerID int64, tab, curso
 	page := domain.BuildPage(rows, limit, func(o domain.StoreOrder) int64 { return o.ID })
 	return domain.StoreOrderPage{Items: page.Items, NextCursor: page.NextCursor, Counts: counts}, nil
 }
+
+func (s *service) ListAllStoreOrders(ctx context.Context, status, cursor string, limit int) (domain.Page[domain.AdminOrder], error) {
+	ctx, span := tracer.Start(ctx, "service.ordering.ListAllStoreOrders")
+	defer span.End()
+
+	st := domain.OrderStatus(status)
+	if st != "" && !st.Valid() {
+		err := invalid("status must be CREATED, SELLER_PROCESSING, READY_FOR_PICKUP, COMPLETED or CANCELLED")
+		tracer.RecordError(span, err)
+		return domain.Page[domain.AdminOrder]{}, err
+	}
+	afterID, err := domain.DecodeCursor(cursor)
+	if err != nil {
+		tracer.RecordError(span, err)
+		return domain.Page[domain.AdminOrder]{}, err
+	}
+	limit = domain.ClampLimit(limit)
+	rows, err := s.orders.ListAllStoreOrders(ctx, st, afterID, limit+1)
+	if err != nil {
+		tracer.RecordError(span, err)
+		return domain.Page[domain.AdminOrder]{}, err
+	}
+	for i := range rows {
+		s.presentStore(&rows[i].StoreOrder)
+	}
+	return domain.BuildPage(rows, limit, func(o domain.AdminOrder) int64 { return o.ID }), nil
+}

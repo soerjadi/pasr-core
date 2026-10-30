@@ -67,6 +67,50 @@ func (r *orderRepository) ListStoreOrders(ctx context.Context, storeID int64, st
 	return orders, nil
 }
 
+func (r *orderRepository) ListAllStoreOrders(ctx context.Context, status domain.OrderStatus, afterID int64, limit int) ([]domain.AdminOrder, error) {
+	ctx, span := tracer.Start(ctx, "repository.order.ListAllStoreOrders")
+	defer span.End()
+
+	rows, err := r.db.Query(ctx, listAllStoreOrdersQuery, string(status), afterID, limit)
+	if err != nil {
+		tracer.RecordError(span, err)
+		return nil, fmt.Errorf("order.ListAllStoreOrders query: %w", err)
+	}
+	defer rows.Close()
+	out := []domain.AdminOrder{}
+	for rows.Next() {
+		var a domain.AdminOrder
+		var acceptBy *time.Time
+		o := &a.StoreOrder
+		if err := rows.Scan(&o.ID, &o.Number, &o.Status, &o.CreatedAt, &acceptBy, &o.BuyerName, &o.Note, &o.Subtotal,
+			&a.StoreID, &a.StoreName); err != nil {
+			tracer.RecordError(span, err)
+			return nil, fmt.Errorf("order.ListAllStoreOrders scan: %w", err)
+		}
+		o.CreatedAt = o.CreatedAt.UTC()
+		o.AcceptBy = utc(acceptBy)
+		out = append(out, a)
+	}
+	if err := rows.Err(); err != nil {
+		tracer.RecordError(span, err)
+		return nil, fmt.Errorf("order.ListAllStoreOrders rows: %w", err)
+	}
+	rows.Close()
+
+	orders := make([]domain.StoreOrder, len(out))
+	for i := range out {
+		orders[i] = out[i].StoreOrder
+	}
+	if err := r.loadStoreDetails(ctx, orders); err != nil {
+		tracer.RecordError(span, err)
+		return nil, err
+	}
+	for i := range out {
+		out[i].StoreOrder = orders[i]
+	}
+	return out, nil
+}
+
 func (r *orderRepository) CountStoreOrders(ctx context.Context, storeID int64) (domain.StoreOrderCounts, error) {
 	ctx, span := tracer.Start(ctx, "repository.order.CountStoreOrders")
 	defer span.End()

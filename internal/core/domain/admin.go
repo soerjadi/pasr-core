@@ -51,3 +51,11 @@ type AdminProduct struct {
 	HalalVerified bool          `json:"halalVerified"`
 	HalalCertNo   *string       `json:"halalCertNo"`
 }
+
+// AdminOrder matches the AdminOrder schema: a seller-order of any store, as the seller sees it,
+// with the store it belongs to. StoreName is the name snapshotted when the order was placed.
+type AdminOrder struct {
+	StoreOrder
+	StoreID   int64  `json:"storeId"`
+	StoreName string `json:"storeName"`
+}

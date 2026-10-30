@@ -164,6 +164,18 @@ const listStoreOrdersQuery = storeOrderColumns + `
 	LIMIT $4
 `
 
+// listAllStoreOrdersQuery pages the seller-orders of every store newest first; with a status it
+// walks seller_orders_status_id_idx, without one the primary key.
+const listAllStoreOrdersQuery = `
+	SELECT so.id, o.number, so.status, so.created_at, so.accept_by, u.name, so.note, so.subtotal, so.store_id, so.store_name
+	FROM seller_orders so
+	JOIN orders o ON o.id = so.order_id
+	JOIN users u ON u.id = o.buyer_id
+	WHERE ($1 = '' OR so.status = $1) AND ($2::bigint = 0 OR so.id < $2)
+	ORDER BY so.id DESC
+	LIMIT $3
+`
+
 const storeOrderItemsQuery = `
 	SELECT oi.id, oi.seller_order_id, oi.product_id, oi.name, oi.image, oi.quantity, oi.unit_price, oi.line_total,
 	       EXISTS (SELECT 1 FROM reviews r WHERE r.order_item_id = oi.id)

@@ -13,6 +13,15 @@ const (
 	OrderCancelled        OrderStatus = "CANCELLED"
 )
 
+// Valid reports whether s is one of the five order statuses.
+func (s OrderStatus) Valid() bool {
+	switch s {
+	case OrderCreated, OrderSellerProcessing, OrderReadyForPickup, OrderCompleted, OrderCancelled:
+		return true
+	}
+	return false
+}
+
 // PaymentMethod matches the PaymentMethod schema in docs/api/openapi.yaml.
 type PaymentMethod string
 

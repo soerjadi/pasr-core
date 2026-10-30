@@ -47,6 +47,9 @@ type OrderingService interface {
 	// domain.ErrValidationFailed). Daily always holds the last seven WIB days, zero-filled; the other
 	// figures cover today or all seven days. Without a store 409 NO_STORE.
 	StoreStats(ctx context.Context, ownerID int64, rng string) (domain.StoreStats, error)
+	// ListAllStoreOrders pages the seller-orders of every store newest first for an operator. status
+	// "" means all, otherwise one OrderStatus; other values and malformed cursors are ErrValidationFailed.
+	ListAllStoreOrders(ctx context.Context, status, cursor string, limit int) (domain.Page[domain.AdminOrder], error)
 	// GetStoreOrder returns a seller-order of the owner's store; another store's is domain.ErrNotFound.
 	GetStoreOrder(ctx context.Context, ownerID, id int64) (domain.StoreOrder, error)
 

@@ -51,6 +51,9 @@ type OrderRepository interface {
 	// ListStoreOrders returns up to limit of the store's seller-orders in statuses with id < afterID
 	// (0 for the first page), newest first, with items and history.
 	ListStoreOrders(ctx context.Context, storeID int64, statuses []domain.OrderStatus, afterID int64, limit int) ([]domain.StoreOrder, error)
+	// ListAllStoreOrders returns up to limit seller-orders of every store with id < afterID (0 for
+	// the first page), newest first, of one status unless status is "", with items and history.
+	ListAllStoreOrders(ctx context.Context, status domain.OrderStatus, afterID int64, limit int) ([]domain.AdminOrder, error)
 	// CountStoreOrders counts the store's seller-orders per seller tab in one query.
 	CountStoreOrders(ctx context.Context, storeID int64) (domain.StoreOrderCounts, error)
 	// OverdueSellerOrders returns up to limit CREATED seller-orders with accept_by <= now, locking
