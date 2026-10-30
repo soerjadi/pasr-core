@@ -3,7 +3,6 @@ package ads
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"strings"
 
 	log "github.com/oemahdev/logger"
@@ -28,16 +27,11 @@ func (s *service) List(ctx context.Context, placement string) ([]domain.Ad, erro
 	}
 	items := make([]domain.Ad, 0, len(rows))
 	for _, a := range rows {
-		if !safeTarget(a.TargetURL) || strings.TrimSpace(a.Label) == "" {
+		if !domain.SafeAdURL(a.TargetURL) || strings.TrimSpace(a.Label) == "" {
 			log.WarnCtx(ctx, "skipping unsafe ad campaign", log.Field("adId", a.ID), log.Field("placement", placement))
 			continue
 		}
 		items = append(items, a)
 	}
 	return items, nil
-}
-
-func safeTarget(raw string) bool {
-	u, err := url.Parse(raw)
-	return err == nil && u.Scheme == "https" && u.Host != ""
 }

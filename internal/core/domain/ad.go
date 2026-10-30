@@ -1,5 +1,7 @@
 package domain
 
+import "net/url"
+
 // Ad placement keys; there is deliberately none for cart or checkout.
 const (
 	AdHomePartnerCarousel = "home_partner_carousel"
@@ -15,6 +17,13 @@ func ValidAdPlacement(p string) bool {
 		return true
 	}
 	return false
+}
+
+// SafeAdURL reports whether raw is an absolute https URL with a host, the only kind of link or
+// image an ad may carry.
+func SafeAdURL(raw string) bool {
+	u, err := url.Parse(raw)
+	return err == nil && u.Scheme == "https" && u.Host != ""
 }
 
 // Ad matches the Ad schema in docs/api/openapi.yaml.
