@@ -122,6 +122,12 @@ func New(ctx context.Context, cfg *config.Config, opts ...Options) (*App, error)
 	if err != nil {
 		return nil, err
 	}
+	if cfg.Database.AutoMigrate {
+		if err := db.Migrate(ctx, pool); err != nil {
+			pool.Close()
+			return nil, err
+		}
+	}
 
 	exec := db.NewExecutor(pool)
 	catalog := catalogsvc.NewService(
