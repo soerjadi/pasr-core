@@ -217,3 +217,51 @@ type NewOrderItem struct {
 	UnitPrice int64
 	LineTotal int64
 }
+
+// StoreSummaryResponse matches the StoreSummaryResponse schema: the seller's home screen.
+// ClosesAt is today's closing time as "HH:MM" (WIB), null when the store is closed today or
+// has no hours; AcceptBy is the earliest deadline among the waiting orders, null when none wait.
+type StoreSummaryResponse struct {
+	IsOpen        bool         `json:"isOpen"`
+	ClosesAt      *string      `json:"closesAt"`
+	NewOrderCount int32        `json:"newOrderCount"`
+	AcceptBy      *time.Time   `json:"acceptBy"`
+	OrdersToday   int32        `json:"ordersToday"`
+	SalesToday    int64        `json:"salesToday"`
+	LatestOrders  []StoreOrder `json:"latestOrders"`
+}
+
+// Stats ranges accepted by the seller stats endpoint.
+const (
+	StatsToday = "TODAY"
+	StatsWeek  = "WEEK"
+)
+
+// DailyValue is the sales of one WIB calendar day; Date is YYYY-MM-DD.
+type DailyValue struct {
+	Date  string `json:"date"`
+	Value int64  `json:"value"`
+}
+
+// TopProduct is a best seller of the range, named as it was when sold.
+type TopProduct struct {
+	ProductID int64  `json:"productId"`
+	Name      string `json:"name"`
+	UnitsSold int64  `json:"unitsSold"`
+}
+
+// StoreStats matches the StoreStats schema. Daily always has seven entries, oldest first, ending today.
+type StoreStats struct {
+	Range           string       `json:"range"`
+	SalesValue      int64        `json:"salesValue"`
+	CompletedOrders int32        `json:"completedOrders"`
+	Daily           []DailyValue `json:"daily"`
+	TopProducts     []TopProduct `json:"topProducts"`
+}
+
+// DayTotal is the completed sales of one WIB day as the repository groups them; Date is YYYY-MM-DD.
+type DayTotal struct {
+	Date   string
+	Sales  int64
+	Orders int32
+}
