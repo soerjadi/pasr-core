@@ -20,6 +20,13 @@ func (c *FakeClock) Now() time.Time {
 	return c.now
 }
 
+// Set moves the clock to t.
+func (c *FakeClock) Set(t time.Time) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.now = t
+}
+
 func (c *FakeClock) Advance(d time.Duration) {
 	c.mu.Lock()
 	defer c.mu.Unlock()

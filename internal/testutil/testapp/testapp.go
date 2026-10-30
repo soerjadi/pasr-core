@@ -85,6 +85,7 @@ func New(t *testing.T, opts ...Option) *Env {
 			Secret: OTPSecret, TTLSeconds: 300, MaxAttempts: 5, PhoneLimit: 100, IPLimit: 1000, WindowMinutes: 10, Sender: "log",
 		},
 		Images: config.Images{MaxBytes: 1 << 20, MaxPixels: 4_000_000},
+		Orders: config.Orders{AcceptWindowMinutes: 10, Timezone: "Asia/Jakarta"},
 	}
 	cfg.App.OperatorPhones = []string{OperatorPhone, OperatorPhone2}
 	for _, o := range opts {
