@@ -22,4 +22,10 @@ type OrderingService interface {
 	// cannot be bought fail the whole order with 409 PRODUCT_UNAVAILABLE, STORE_CLOSED or
 	// INSUFFICIENT_STOCK naming the product ids.
 	CreateOrder(ctx context.Context, buyerID int64, key string, lines []domain.CartLineInput) (domain.Order, error)
+
+	// GetOrder returns one of the buyer's orders; another user's order is domain.ErrNotFound.
+	GetOrder(ctx context.Context, buyerID, orderID int64) (domain.Order, error)
+	// ListOrders pages the buyer's orders newest first. tab is ALL (also for ""), PROCESSING,
+	// READY or DONE (domain.TabStatuses); other values and malformed cursors are ErrValidationFailed.
+	ListOrders(ctx context.Context, buyerID int64, tab, cursor string, limit int) (domain.Page[domain.Order], error)
 }
