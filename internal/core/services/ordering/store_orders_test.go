@@ -338,6 +338,26 @@ func TestReject_OtherRequiresNote400(t *testing.T) {
 	}
 }
 
+func TestNotes_WithNULAre400(t *testing.T) {
+	f := setupOrders(t)
+	ctx := context.Background()
+	buyer := seed.User(t, f.pool, "", "")
+	s := newShop(t, f, "A")
+	id := soOf(t, f.place(t, buyer, 1, s), s.store)
+	if _, err := f.svc.Reject(ctx, operator, id, "OTHER", "a\x00b"); !errors.Is(err, domain.ErrValidationFailed) {
+		t.Fatalf("reject: %v", err)
+	}
+	if _, err := f.svc.Accept(ctx, operator, id); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.svc.Ready(ctx, operator, id, "ambil\x00"); !errors.Is(err, domain.ErrValidationFailed) {
+		t.Fatalf("ready: %v", err)
+	}
+	if _, err := f.svc.Cancel(ctx, operator, id, "OTHER", "\x00"); !errors.Is(err, domain.ErrValidationFailed) {
+		t.Fatalf("cancel: %v", err)
+	}
+}
+
 func TestReady_SetsNoteAndNotifies(t *testing.T) {
 	f := setupOrders(t)
 	ctx := context.Background()

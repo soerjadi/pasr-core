@@ -92,6 +92,9 @@ func (s *service) cancelWith(ctx context.Context, actor domain.Actor, id int64, 
 
 func cleanNote(note string) (string, error) {
 	note = strings.TrimSpace(note)
+	if strings.ContainsRune(note, 0) {
+		return "", invalid("note must not contain NUL characters")
+	}
 	if utf8.RuneCountInString(note) > maxNoteRunes {
 		return "", invalid("note must be at most " + strconv.Itoa(maxNoteRunes) + " characters")
 	}
