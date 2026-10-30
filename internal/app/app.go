@@ -214,6 +214,12 @@ func New(ctx context.Context, cfg *config.Config, opts ...Options) (*App, error)
 
 	runner.Add("notifications-dispatch", 5*time.Second, notify.Dispatch)
 
+	// Seller-orders not accepted within the accept window are cancelled and their stock restored.
+	runner.Add("orders-auto-cancel", 30*time.Second, func(ctx context.Context) error {
+		_, err := ordering.ExpireOverdue(ctx)
+		return err
+	})
+
 	return &App{pool: pool, exec: exec, clock: opt.Clock, handler: router.New(h, cfg.App.AllowedOrigins, ping), jobs: runner}, nil
 }
 
