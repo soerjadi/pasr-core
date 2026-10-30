@@ -171,3 +171,12 @@ func TestFavoriteIDsIncrease(t *testing.T) {
 	}
 	wantErr(t, pool, `INSERT INTO favorites (user_id, product_id) VALUES ($1, $2)`, u, p1)
 }
+
+// An order claims its Idempotency-Key before the order row exists, so order_id starts empty.
+func TestIdempotencyKeyClaimedBeforeOrder(t *testing.T) {
+	pool := pgtest.Pool(t)
+	u := newUser(t, pool, "+6281200000003")
+	exec(t, pool, `INSERT INTO idempotency_keys (user_id, key, request_hash) VALUES ($1, 'k1', 'h')`, u)
+	oid := scalar[int64](t, pool, `INSERT INTO orders (number, buyer_id, total, status) VALUES ('NM-20261029-001', $1, 1, 'CREATED') RETURNING id`, u)
+	exec(t, pool, `UPDATE idempotency_keys SET order_id = $2 WHERE user_id = $1 AND key = 'k1'`, u, oid)
+}
