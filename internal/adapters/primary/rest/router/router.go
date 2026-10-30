@@ -149,5 +149,11 @@ func AdminRoutes(a *admin.Handler) []Route {
 		{"POST /v1/admin/ad-campaigns", a.CreateAdCampaign},
 		{"PATCH /v1/admin/ad-campaigns/{id}", a.UpdateAdCampaign},
 		{"DELETE /v1/admin/ad-campaigns/{id}", a.DeleteAdCampaign},
+		{"GET /v1/admin/orders", a.ListOrders},
+		{"POST /v1/admin/seller-orders/{id}/accept", a.AcceptOrder},
+		{"POST /v1/admin/seller-orders/{id}/reject", a.RejectOrder},
+		{"POST /v1/admin/seller-orders/{id}/ready", a.ReadyOrder},
+		{"POST /v1/admin/seller-orders/{id}/complete", a.CompleteOrder},
+		{"POST /v1/admin/seller-orders/{id}/cancel", a.CancelOrder},
 	}
 }

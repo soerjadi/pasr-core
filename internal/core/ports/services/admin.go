@@ -49,4 +49,15 @@ type AdminService interface {
 	UpdateAdCampaign(ctx context.Context, id int64, in domain.AdCampaignInput) (domain.AdCampaign, error)
 	// DeleteAdCampaign removes a campaign; an unknown id is domain.ErrNotFound.
 	DeleteAdCampaign(ctx context.Context, id int64) error
+
+	// ListOrders pages the seller-orders of every store newest first; see OrderingService.ListAllStoreOrders.
+	ListOrders(ctx context.Context, status, cursor string, limit int) (domain.Page[domain.AdminOrder], error)
+	// AcceptOrder, RejectOrder, ReadyOrder, CompleteOrder and CancelOrder act on any store's
+	// seller-order as operatorID through the OrderingService (Actor{Role: operator}), so they follow
+	// exactly the seller rules, notifications and stock handling.
+	AcceptOrder(ctx context.Context, operatorID, id int64) (domain.StoreOrder, error)
+	RejectOrder(ctx context.Context, operatorID, id int64, reason, note string) (domain.StoreOrder, error)
+	ReadyOrder(ctx context.Context, operatorID, id int64, note string) (domain.StoreOrder, error)
+	CompleteOrder(ctx context.Context, operatorID, id int64) (domain.StoreOrder, error)
+	CancelOrder(ctx context.Context, operatorID, id int64, reason, note string) (domain.StoreOrder, error)
 }
