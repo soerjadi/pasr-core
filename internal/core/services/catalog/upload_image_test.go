@@ -50,12 +50,14 @@ func (m *memStore) Delete(_ context.Context, key string) error {
 func (m *memStore) URL(key string) string { return "https://media.test/" + key }
 
 type fakeUploads struct {
-	mu      sync.Mutex
-	rows    map[int64]domain.ImageKeys
-	created map[int64]time.Time
-	next    int64
-	orphans []domain.ImageKeys
-	cutoff  time.Time
+	mu       sync.Mutex
+	rows     map[int64]domain.ImageKeys
+	created  map[int64]time.Time
+	next     int64
+	orphans  []domain.ImageKeys
+	detached []domain.ImageKeys
+	cutoff   time.Time
+	dcutoff  time.Time
 }
 
 func (f *fakeUploads) Create(_ context.Context, _ int64, k domain.ImageKeys) (int64, error) {
@@ -75,6 +77,10 @@ func (f *fakeUploads) MarkAttached(context.Context, []int64) error { return nil 
 func (f *fakeUploads) DeleteOrphans(_ context.Context, olderThan time.Time) ([]domain.ImageKeys, error) {
 	f.cutoff = olderThan
 	return f.orphans, nil
+}
+func (f *fakeUploads) DeleteDetached(_ context.Context, olderThan time.Time) ([]domain.ImageKeys, error) {
+	f.dcutoff = olderThan
+	return f.detached, nil
 }
 
 type fixedClock struct{ t time.Time }
@@ -326,15 +332,20 @@ func TestOrphanGC_DeletesOldUnattachedOnly(t *testing.T) {
 	for _, key := range k.All() {
 		st.objs[key] = []byte("x")
 	}
+	d := domain.ImageKeys{Small: "images/d-s.jpg", Medium: "images/d-m.jpg", Large: "images/d-l.jpg"}
+	for _, key := range d.All() {
+		st.objs[key] = []byte("d")
+	}
 	st.objs["images/keep.jpg"] = []byte("y")
 	up.orphans = []domain.ImageKeys{k}
+	up.detached = []domain.ImageKeys{d}
 
 	n, err := s.PurgeOrphanUploads(context.Background())
-	if err != nil || n != 1 {
+	if err != nil || n != 2 {
 		t.Fatalf("n = %d err = %v", n, err)
 	}
-	if want := time.Date(2026, 10, 28, 12, 0, 0, 0, time.UTC); !up.cutoff.Equal(want) {
-		t.Fatalf("cutoff = %v, want 24h before now (%v)", up.cutoff, want)
+	if want := time.Date(2026, 10, 28, 12, 0, 0, 0, time.UTC); !up.cutoff.Equal(want) || !up.dcutoff.Equal(want) {
+		t.Fatalf("cutoffs = %v %v, want 24h before now (%v)", up.cutoff, up.dcutoff, want)
 	}
 	if len(st.objs) != 1 || st.objs["images/keep.jpg"] == nil {
 		t.Fatalf("objects left: %v", st.objs)

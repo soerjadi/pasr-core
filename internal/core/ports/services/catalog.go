@@ -12,8 +12,8 @@ type CatalogService interface {
 	// UploadImage validates r as a JPEG, PNG or WebP image, stores three JPEG variants and
 	// records them as an unattached upload owned by ownerID.
 	UploadImage(ctx context.Context, ownerID int64, r io.Reader) (domain.ImageUpload, error)
-	// PurgeOrphanUploads deletes unattached uploads older than the retention period from the
-	// database and storage, returning how many uploads were removed.
+	// PurgeOrphanUploads deletes unattached uploads, and attached ones nothing refers to any more,
+	// older than the retention period from the database and storage, returning how many were removed.
 	PurgeOrphanUploads(ctx context.Context) (int, error)
 	// ListProducts pages publicly visible products newest first. A non-empty q shorter than
 	// 2 characters fails with domain.ErrValidationFailed.

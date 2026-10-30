@@ -15,4 +15,7 @@ type UploadRepository interface {
 	MarkAttached(ctx context.Context, ids []int64) error
 	// DeleteOrphans removes unattached uploads created before olderThan and returns their keys.
 	DeleteOrphans(ctx context.Context, olderThan time.Time) ([]domain.ImageKeys, error)
+	// DeleteDetached removes attached uploads created before olderThan that no product image, store
+	// photo or order-item image snapshot refers to any more, and returns their keys.
+	DeleteDetached(ctx context.Context, olderThan time.Time) ([]domain.ImageKeys, error)
 }

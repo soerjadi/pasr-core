@@ -8,17 +8,27 @@ import (
 	"github.com/oemah/nusantara/core/internal/infrastructure/tracer"
 )
 
-// PurgeOrphanUploads deletes the rows first, then the objects: a failed object delete leaks a file
-// (logged) but never leaves a row pointing at a missing object.
+// PurgeOrphanUploads deletes uploads never attached and attached uploads nothing refers to any more
+// (replaced product or store photos), both only once older than the retention period. It deletes the
+// rows first, then the objects: a failed object delete leaks a file (logged) but never leaves a row
+// pointing at a missing object.
 func (s *service) PurgeOrphanUploads(ctx context.Context) (int, error) {
 	ctx, span := tracer.Start(ctx, "service.catalog.PurgeOrphanUploads")
 	defer span.End()
 
-	orphans, err := s.uploads.DeleteOrphans(ctx, s.clock.Now().Add(-s.cfg.OrphanAge))
+	cutoff := s.clock.Now().Add(-s.cfg.OrphanAge)
+	orphans, err := s.uploads.DeleteOrphans(ctx, cutoff)
 	if err != nil {
 		tracer.RecordError(span, err)
 		return 0, err
 	}
+	detached, err := s.uploads.DeleteDetached(ctx, cutoff)
+	if err != nil {
+		tracer.RecordError(span, err)
+		// The unattached rows are already gone; still remove their objects below.
+		log.ErrorCtx(ctx, "[service.catalog.PurgeOrphanUploads] delete detached failed", log.Field("error", err))
+	}
+	orphans = append(orphans, detached...)
 	for _, keys := range orphans {
 		for _, k := range keys.All() {
 			if err := s.storage.Delete(ctx, k); err != nil {
@@ -30,5 +40,5 @@ func (s *service) PurgeOrphanUploads(ctx context.Context) (int, error) {
 	if len(orphans) > 0 {
 		log.InfoCtx(ctx, "orphan uploads purged", log.Field("count", len(orphans)))
 	}
-	return len(orphans), nil
+	return len(orphans), err
 }
