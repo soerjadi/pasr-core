@@ -63,7 +63,7 @@ func TestValidateCart_PricesFromServerNotClient(t *testing.T) {
 
 func TestValidateCart_GroupsBySellerWithPickupInfoAndIssues(t *testing.T) {
 	env, db := setup(t)
-	a, _ := seed.Store(t, db, seed.StoreOpts{Name: "A", Address: "Jl. A 1", WhatsApp: "+6281111111111", Hours: allDays("07:00", "17:00")})
+	a, _ := seed.Store(t, db, seed.StoreOpts{Name: "A", Photo: true, Address: "Jl. A 1", WhatsApp: "+6281111111111", Hours: allDays("07:00", "17:00")})
 	b, _ := seed.Store(t, db, seed.StoreOpts{Name: "B"})
 	closed, _ := seed.Store(t, db, seed.StoreOpts{Name: "C"})
 	pending, _ := seed.Store(t, db, seed.StoreOpts{Name: "D", Status: "PENDING"})
@@ -88,7 +88,10 @@ func TestValidateCart_GroupsBySellerWithPickupInfoAndIssues(t *testing.T) {
 	if r.Status != http.StatusOK {
 		t.Fatalf("got %d %s", r.Status, r.Body)
 	}
-	if len(v.Groups) != 5 || v.Groups[0].Seller.ID != a || v.Groups[1].Seller.ID != b {
+	contract.AssertShape(t, "validateCart", r.Body)
+	// groups: A, B, closed C, then the bare pseudo-group (seller 0) for pending/hidden/deleted/missing
+	if len(v.Groups) != 4 || v.Groups[0].Seller.ID != a || v.Groups[1].Seller.ID != b ||
+		v.Groups[2].Seller.ID != closed || v.Groups[3].Seller.ID != 0 {
 		t.Fatalf("groups: %s", r.Body)
 	}
 	s := v.Groups[0].Seller
@@ -101,23 +104,28 @@ func TestValidateCart_GroupsBySellerWithPickupInfoAndIssues(t *testing.T) {
 		}
 		return string(*l.Issue)
 	}
-	// store A lines in request order: pa(merged qty 2), pa2, hidden, deleted, oos
-	la := v.Groups[0].Lines
-	want := []string{"", "", "PRODUCT_UNAVAILABLE", "PRODUCT_UNAVAILABLE", "OUT_OF_STOCK"}
-	if len(la) != len(want) || la[0].Quantity != 2 {
+	la := v.Groups[0].Lines // pa (merged qty 2), pa2, oos
+	if len(la) != 3 || la[0].Quantity != 2 || issue(la[0]) != "" || issue(la[1]) != "" || issue(la[2]) != "OUT_OF_STOCK" {
 		t.Fatalf("store A lines: %s", r.Body)
-	}
-	for i, w := range want {
-		if issue(la[i]) != w {
-			t.Errorf("A line %d issue = %q, want %q", i, issue(la[i]), w)
-		}
 	}
 	if issue(v.Groups[1].Lines[0]) != "INSUFFICIENT_STOCK" || v.Groups[1].Lines[0].AvailableStock != 2 {
 		t.Errorf("B line = %+v", v.Groups[1].Lines[0])
 	}
-	if issue(v.Groups[2].Lines[0]) != "PRODUCT_UNAVAILABLE" || issue(v.Groups[3].Lines[0]) != "PRODUCT_UNAVAILABLE" ||
-		v.Groups[4].Seller.ID != 0 || issue(v.Groups[4].Lines[0]) != "PRODUCT_UNAVAILABLE" {
-		t.Errorf("closed/pending/missing: %s", r.Body)
+	// a closed but verified store is public: details stay, the issue is PRODUCT_UNAVAILABLE
+	cl := v.Groups[2]
+	if cl.Seller.Name != "C" || cl.Seller.PickupAddress == "" || cl.Lines[0].Name == "" || cl.Lines[0].UnitPrice == 0 ||
+		issue(cl.Lines[0]) != "PRODUCT_UNAVAILABLE" {
+		t.Errorf("closed store: %+v", cl)
+	}
+	bare := v.Groups[3]
+	if len(bare.Lines) != 4 || bare.Seller != (domain.SellerSummary{}) {
+		t.Fatalf("bare group: %s", r.Body)
+	}
+	for _, l := range bare.Lines {
+		if issue(l) != "PRODUCT_UNAVAILABLE" || l.Name != "" || l.UnitPrice != 0 || l.LineTotal != 0 ||
+			l.AvailableStock != 0 || l.Image != (domain.ImageSet{}) {
+			t.Errorf("leaked: %+v", l)
+		}
 	}
 	if v.Total != 2*1000+2*500 { // pa x2 + pa2 x2; everything else has an issue
 		t.Errorf("total = %d", v.Total)

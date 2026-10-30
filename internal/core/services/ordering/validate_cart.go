@@ -31,6 +31,9 @@ func (s *service) ValidateCart(ctx context.Context, lines []domain.CartLineInput
 	groupAt := map[int64]int{} // store id (0 for products that do not exist) -> index in out.Groups
 	for _, l := range merged {
 		p, found := products[l.ProductID]
+		// Anonymous callers must not learn anything about hidden, deleted or unverified-store
+		// products: those are indistinguishable from ids that do not exist.
+		found = found && p.PubliclyVisible()
 		line, err := s.line(l, p, found)
 		if err != nil {
 			tracer.RecordError(span, err)
@@ -93,7 +96,9 @@ func mergeLines(lines []domain.CartLineInput) ([]domain.CartLineInput, error) {
 	return merged, nil
 }
 
-// line classifies one merged request line. A product that does not exist is a bare unavailable line.
+// line classifies one merged request line. found is false for products that do not exist or are
+// not publicly visible; both become the same bare unavailable line. The line total is only
+// enforced for lines without an issue: an overflow on a line that already has one leaves lineTotal 0 instead of failing the request.
 func (s *service) line(l domain.CartLineInput, p domain.CartProduct, found bool) (domain.ValidatedLine, error) {
 	v := domain.ValidatedLine{ProductID: l.ProductID, Quantity: l.Quantity}
 	if !found {
@@ -101,17 +106,13 @@ func (s *service) line(l domain.CartLineInput, p domain.CartProduct, found bool)
 		v.Issue = &unavailable
 		return v, nil
 	}
-	total, err := domain.LineTotal(p.Price, l.Quantity)
-	if err != nil {
-		return domain.ValidatedLine{}, err
-	}
-	v.Name, v.UnitPrice, v.LineTotal = p.Name, p.Price, total
+	v.Name, v.UnitPrice = p.Name, p.Price
 	if p.Image != nil {
 		v.Image = s.imageSet(*p.Image)
 	}
 	var issue domain.LineIssue
 	switch {
-	case !p.Orderable():
+	case !p.Orderable(): // visible but its store is closed
 		issue = domain.IssueProductUnavailable
 	case p.Stock == 0 || p.Status == domain.ProductOutOfStock:
 		issue = domain.IssueOutOfStock
@@ -122,9 +123,18 @@ func (s *service) line(l domain.CartLineInput, p domain.CartProduct, found bool)
 	default:
 		v.AvailableStock = p.Stock
 	}
+	total, err := domain.LineTotal(p.Price, l.Quantity)
 	if issue != "" {
 		v.Issue = &issue
+		if err == nil {
+			v.LineTotal = total
+		}
+		return v, nil
 	}
+	if err != nil {
+		return domain.ValidatedLine{}, err
+	}
+	v.LineTotal = total
 	return v, nil
 }
 

@@ -34,7 +34,7 @@ func (fakeStorage) Delete(context.Context, string) error                 { retur
 func (fakeStorage) URL(key string) string                                { return "https://img.test/" + key }
 
 func store(id int64, name string) domain.CartStore {
-	return domain.CartStore{ID: id, Name: name, Status: "VERIFIED", IsOpen: true, PickupAddress: "Jl. " + name,
+	return domain.CartStore{ID: id, Name: name, Status: domain.StoreVerified, IsOpen: true, PickupAddress: "Jl. " + name,
 		WhatsApp: "+62812", Location: "Menteng", Hours: nil}
 }
 
@@ -129,8 +129,8 @@ func TestValidateCart_IssueTable(t *testing.T) {
 		{"insufficient", mut(func(*domain.CartProduct) {}), 6, domain.IssueInsufficientStock, 5},
 		{"hidden", mut(func(p *domain.CartProduct) { p.Status = domain.ProductHidden }), 1, domain.IssueProductUnavailable, 0},
 		{"deleted", mut(func(p *domain.CartProduct) { p.Deleted = true }), 1, domain.IssueProductUnavailable, 0},
-		{"pending store", mut(func(p *domain.CartProduct) { p.Store.Status = "PENDING" }), 1, domain.IssueProductUnavailable, 0},
-		{"suspended store", mut(func(p *domain.CartProduct) { p.Store.Status = "SUSPENDED" }), 1, domain.IssueProductUnavailable, 0},
+		{"pending store", mut(func(p *domain.CartProduct) { p.Store.Status = domain.StorePending }), 1, domain.IssueProductUnavailable, 0},
+		{"suspended store", mut(func(p *domain.CartProduct) { p.Store.Status = domain.StoreSuspended }), 1, domain.IssueProductUnavailable, 0},
 		{"closed store", mut(func(p *domain.CartProduct) { p.Store.IsOpen = false }), 1, domain.IssueProductUnavailable, 0},
 	}
 	for _, tc := range tests {
@@ -165,9 +165,9 @@ func TestValidateCart_ReturnsEveryLineEvenWhenUnavailable(t *testing.T) {
 	if n != 3 || len(got.Groups) != 2 {
 		t.Fatalf("want 3 lines in 2 groups, got %d in %d: %+v", n, len(got.Groups), got.Groups)
 	}
-	missing := got.Groups[1]
-	if missing.Seller.ID != 0 || missing.Lines[0].ProductID != 404 || missing.Lines[0].Issue == nil ||
-		*missing.Lines[0].Issue != domain.IssueProductUnavailable || missing.Lines[0].Quantity != 2 {
+	missing := got.Groups[1] // the deleted product and the unknown id share the bare group
+	if missing.Seller.ID != 0 || len(missing.Lines) != 2 || missing.Lines[1].ProductID != 404 || missing.Lines[1].Issue == nil ||
+		*missing.Lines[1].Issue != domain.IssueProductUnavailable || missing.Lines[1].Quantity != 2 {
 		t.Fatalf("missing product group = %+v", missing)
 	}
 }
@@ -184,6 +184,58 @@ func TestValidateCart_TotalExcludesIssueLines(t *testing.T) {
 	}
 	if got.Total != 2300 {
 		t.Fatalf("total = %d, want 2300", got.Total)
+	}
+}
+
+func TestValidateCart_HiddenDeletedUnverifiedLeakNothing(t *testing.T) {
+	mut := func(fn func(*domain.CartProduct)) domain.CartProduct {
+		p := product(1, store(1, "A"), 1000, 5)
+		fn(&p)
+		return p
+	}
+	cases := map[string]domain.CartProduct{
+		"hidden":    mut(func(p *domain.CartProduct) { p.Status = domain.ProductHidden }),
+		"deleted":   mut(func(p *domain.CartProduct) { p.Deleted = true }),
+		"pending":   mut(func(p *domain.CartProduct) { p.Store.Status = domain.StorePending }),
+		"suspended": mut(func(p *domain.CartProduct) { p.Store.Status = domain.StoreSuspended }),
+	}
+	for name, p := range cases {
+		t.Run(name, func(t *testing.T) {
+			got, err := run(t, &fakeCarts{products: map[int64]domain.CartProduct{1: p}}, in(1, 2))
+			if err != nil {
+				t.Fatal(err)
+			}
+			g := got.Groups[0]
+			l := g.Lines[0]
+			if g.Seller != (domain.SellerSummary{}) || l.Name != "" || l.Image != (domain.ImageSet{}) ||
+				l.UnitPrice != 0 || l.LineTotal != 0 || l.AvailableStock != 0 || l.Quantity != 2 ||
+				l.Issue == nil || *l.Issue != domain.IssueProductUnavailable || got.Total != 0 {
+				t.Fatalf("leaked or wrong shape: %+v", got)
+			}
+		})
+	}
+}
+
+func TestValidateCart_ClosedVerifiedStoreStillShowsDetails(t *testing.T) {
+	p := product(1, store(1, "A"), 1000, 5)
+	p.Store.IsOpen = false
+	got, err := run(t, &fakeCarts{products: map[int64]domain.CartProduct{1: p}}, in(1, 2))
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := got.Groups[0]
+	l := g.Lines[0]
+	if g.Seller.ID != 1 || g.Seller.PickupAddress == "" || l.Name != "P" || l.UnitPrice != 1000 || l.LineTotal != 2000 ||
+		l.Issue == nil || *l.Issue != domain.IssueProductUnavailable || got.Total != 0 {
+		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestValidateCart_OverflowOnUnavailableLineDoesNotFail(t *testing.T) {
+	p := product(1, store(1, "A"), math.MaxInt64/2+1, 5)
+	p.Store.IsOpen = false
+	if _, err := run(t, &fakeCarts{products: map[int64]domain.CartProduct{1: p}}, in(1, 2)); err != nil {
+		t.Fatalf("got %v", err)
 	}
 }
 

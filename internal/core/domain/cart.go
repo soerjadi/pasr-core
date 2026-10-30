@@ -12,7 +12,7 @@ type CartStore struct {
 	PickupAddress string
 	Hours         Hours
 	WhatsApp      string
-	Status        string // PENDING, VERIFIED or SUSPENDED
+	Status        StoreStatus
 	IsOpen        bool
 }
 
@@ -29,8 +29,14 @@ type CartProduct struct {
 	Store   CartStore
 }
 
+// PubliclyVisible reports whether anonymous callers may see the product and its store: it is
+// not deleted, not hidden and the store is VERIFIED (open or closed).
+func (p CartProduct) PubliclyVisible() bool {
+	return !p.Deleted && p.Status != ProductHidden && p.Store.Status == StoreVerified
+}
+
 // Orderable reports whether the product can be bought at all: not deleted, not hidden and its
 // store is VERIFIED and open. Stock is judged separately.
 func (p CartProduct) Orderable() bool {
-	return !p.Deleted && p.Status != ProductHidden && p.Store.Status == "VERIFIED" && p.Store.IsOpen
+	return p.PubliclyVisible() && p.Store.IsOpen
 }
