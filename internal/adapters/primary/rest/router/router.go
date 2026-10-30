@@ -155,5 +155,6 @@ func AdminRoutes(a *admin.Handler) []Route {
 		{"POST /v1/admin/seller-orders/{id}/ready", a.ReadyOrder},
 		{"POST /v1/admin/seller-orders/{id}/complete", a.CompleteOrder},
 		{"POST /v1/admin/seller-orders/{id}/cancel", a.CancelOrder},
+		{"DELETE /v1/admin/reviews/{id}", a.DeleteReview},
 	}
 }

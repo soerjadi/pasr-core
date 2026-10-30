@@ -60,4 +60,8 @@ type AdminService interface {
 	ReadyOrder(ctx context.Context, operatorID, id int64, note string) (domain.StoreOrder, error)
 	CompleteOrder(ctx context.Context, operatorID, id int64) (domain.StoreOrder, error)
 	CancelOrder(ctx context.Context, operatorID, id int64, reason, note string) (domain.StoreOrder, error)
+
+	// DeleteReview removes a review and subtracts its rating from the product and store aggregates
+	// in one transaction; an unknown id is domain.ErrNotFound.
+	DeleteReview(ctx context.Context, id int64) error
 }

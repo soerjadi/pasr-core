@@ -31,3 +31,10 @@ type NewReview struct {
 	Rating      int32
 	Text        string
 }
+
+// DeletedReview is what a removed review counted toward: its product, store and rating.
+type DeletedReview struct {
+	ProductID int64
+	StoreID   int64
+	Rating    int32
+}

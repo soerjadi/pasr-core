@@ -264,6 +264,18 @@ func (h *Handler) orderAction(w http.ResponseWriter, r *http.Request, fn func(op
 	rest.WriteJSON(w, http.StatusOK, out)
 }
 
+func (h *Handler) DeleteReview(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathID(w, r)
+	if !ok {
+		return
+	}
+	if err := h.admin.DeleteReview(r.Context(), id); err != nil {
+		rest.WriteServiceError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // pathID parses the {id} path value; a malformed id can never match a row, so it is a 404.
 func pathID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)

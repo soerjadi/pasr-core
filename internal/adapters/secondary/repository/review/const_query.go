@@ -29,3 +29,18 @@ const addRatingQuery = `
 	)
 	SELECT (SELECT count(*) FROM p) + (SELECT count(*) FROM s)
 `
+
+const deleteQuery = `DELETE FROM reviews WHERE id = $1 RETURNING product_id, store_id, rating`
+
+// subtractRatingQuery takes a removed review back out of both aggregates in one statement. GREATEST
+// keeps aggregates that are already out of step with the reviews from going negative.
+const subtractRatingQuery = `
+	WITH p AS (
+		UPDATE products SET rating_sum = GREATEST(rating_sum - $3, 0), rating_count = GREATEST(rating_count - 1, 0)
+		WHERE id = $1 RETURNING id
+	), s AS (
+		UPDATE stores SET rating_sum = GREATEST(rating_sum - $3, 0), rating_count = GREATEST(rating_count - 1, 0)
+		WHERE id = $2 RETURNING id
+	)
+	SELECT (SELECT count(*) FROM p) + (SELECT count(*) FROM s)
+`

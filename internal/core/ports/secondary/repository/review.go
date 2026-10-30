@@ -17,4 +17,11 @@ type ReviewRepository interface {
 	Create(ctx context.Context, r domain.NewReview) (domain.Review, error)
 	// AddRating adds rating to the rating_sum and 1 to the rating_count of the product and the store.
 	AddRating(ctx context.Context, productID, storeID int64, rating int32) error
+
+	// Delete removes the review and returns what it counted toward, or domain.ErrNotFound. Of two
+	// concurrent deletes of one review only one finds it.
+	Delete(ctx context.Context, id int64) (domain.DeletedReview, error)
+	// SubtractRating takes rating from the rating_sum and 1 from the rating_count of the product and
+	// the store, never below zero.
+	SubtractRating(ctx context.Context, productID, storeID int64, rating int32) error
 }
