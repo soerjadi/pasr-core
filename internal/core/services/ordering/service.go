@@ -26,6 +26,7 @@ type service struct {
 	reviews repository.ReviewRepository
 	keys    repository.IdempotencyRepository
 	stores  repository.StoreRepository
+	stats   repository.StatsRepository
 	tx      repository.TxManager
 	notify  services.NotifyService
 	storage storage.ObjectStorage
@@ -39,6 +40,7 @@ func NewService(
 	reviews repository.ReviewRepository,
 	keys repository.IdempotencyRepository,
 	stores repository.StoreRepository,
+	stats repository.StatsRepository,
 	tx repository.TxManager,
 	notify services.NotifyService,
 	objects storage.ObjectStorage,
@@ -48,7 +50,7 @@ func NewService(
 	if cfg.Location == nil {
 		cfg.Location = time.UTC
 	}
-	return &service{carts: carts, orders: orders, reviews: reviews, keys: keys, stores: stores, tx: tx, notify: notify, storage: objects, clock: clock, cfg: cfg}
+	return &service{carts: carts, orders: orders, reviews: reviews, keys: keys, stores: stores, stats: stats, tx: tx, notify: notify, storage: objects, clock: clock, cfg: cfg}
 }
 
 func invalid(msg string) error {

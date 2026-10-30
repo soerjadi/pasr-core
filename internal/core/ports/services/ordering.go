@@ -39,6 +39,14 @@ type OrderingService interface {
 	// ListStoreOrders pages the owner's store's seller-orders newest first. tab is NEW (also for ""),
 	// PROCESSING or DONE (domain.SellerTabStatuses); Counts cover every tab. Without a store 409 NO_STORE.
 	ListStoreOrders(ctx context.Context, ownerID int64, tab, cursor string, limit int) (domain.StoreOrderPage, error)
+	// StoreSummary is the owner's home screen: open flag, today's closing time, orders waiting to be
+	// accepted, today's order count and completed sales (WIB day) and the three newest orders.
+	// Without a store 409 NO_STORE.
+	StoreSummary(ctx context.Context, ownerID int64) (domain.StoreSummaryResponse, error)
+	// StoreStats reports completed sales and best sellers for rng (domain.StatsToday or StatsWeek, else
+	// domain.ErrValidationFailed). Daily always holds the last seven WIB days, zero-filled; the other
+	// figures cover today or all seven days. Without a store 409 NO_STORE.
+	StoreStats(ctx context.Context, ownerID int64, rng string) (domain.StoreStats, error)
 	// GetStoreOrder returns a seller-order of the owner's store; another store's is domain.ErrNotFound.
 	GetStoreOrder(ctx context.Context, ownerID, id int64) (domain.StoreOrder, error)
 

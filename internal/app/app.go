@@ -35,6 +35,7 @@ import (
 	reviewrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/review"
 	sessionrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/session"
 	socialrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/social"
+	statsrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/stats"
 	storerepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/store"
 	storefrontrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/storefront"
 	uploadrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/upload"
@@ -185,6 +186,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...Options) (*App, error)
 		reviewrepo.NewReviewRepository(exec),
 		idemrepo.NewIdempotencyRepository(exec),
 		storerepo.NewStoreRepository(exec),
+		statsrepo.NewStatsRepository(exec),
 		exec, notify, opt.Storage, opt.Clock,
 		ordersvc.Config{AcceptWindow: time.Duration(cfg.Orders.AcceptWindowMinutes) * time.Minute, Location: loc},
 	)
