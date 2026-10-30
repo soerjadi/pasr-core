@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+	_ "time/tzdata" // the business time zone must load even on images without zoneinfo
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -26,7 +27,9 @@ import (
 	cartrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/cart"
 	categoryrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/category"
 	devicerepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/device"
+	idemrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/idempotency"
 	notificationrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/notification"
+	orderrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/order"
 	otprepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/otp"
 	productrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/product"
 	reviewrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/review"
@@ -103,6 +106,15 @@ func New(ctx context.Context, cfg *config.Config, opts ...Options) (*App, error)
 		opt.Pusher = p
 	}
 
+	tz := cfg.Orders.Timezone
+	if tz == "" {
+		tz = "Asia/Jakarta"
+	}
+	loc, err := time.LoadLocation(tz)
+	if err != nil {
+		return nil, fmt.Errorf("app: orders.timezone: %w", err)
+	}
+
 	pool, err := db.New(ctx, cfg.Database)
 	if err != nil {
 		return nil, err
@@ -160,16 +172,22 @@ func New(ctx context.Context, cfg *config.Config, opts ...Options) (*App, error)
 		exec,
 	)
 
-	ordering := ordersvc.NewService(cartrepo.NewCartRepository(exec), opt.Storage)
-
-	adsService := adssvc.NewService(adrepo.NewAdRepository(exec), opt.Clock)
-
 	notify := notifysvc.NewService(
 		notificationrepo.NewNotificationRepository(exec),
 		devicerepo.NewDeviceRepository(exec),
 		opt.Pusher,
 		exec,
 	)
+
+	ordering := ordersvc.NewService(
+		cartrepo.NewCartRepository(exec),
+		orderrepo.NewOrderRepository(exec),
+		idemrepo.NewIdempotencyRepository(exec),
+		exec, notify, opt.Storage, opt.Clock,
+		ordersvc.Config{AcceptWindow: time.Duration(cfg.Orders.AcceptWindowMinutes) * time.Minute, Location: loc},
+	)
+
+	adsService := adssvc.NewService(adrepo.NewAdRepository(exec), opt.Clock)
 
 	files, _ := opt.Storage.(media.FileServer) // only the local driver serves its own files
 	h := router.Handlers{
