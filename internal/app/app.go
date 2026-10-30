@@ -183,6 +183,7 @@ func New(ctx context.Context, cfg *config.Config, opts ...Options) (*App, error)
 		cartrepo.NewCartRepository(exec),
 		orderrepo.NewOrderRepository(exec),
 		idemrepo.NewIdempotencyRepository(exec),
+		storerepo.NewStoreRepository(exec),
 		exec, notify, opt.Storage, opt.Clock,
 		ordersvc.Config{AcceptWindow: time.Duration(cfg.Orders.AcceptWindowMinutes) * time.Minute, Location: loc},
 	)

@@ -134,7 +134,9 @@ const restoreStockQuery = `
 	WHERE p.id = q.product_id
 `
 
-const lockOrderQuery = `SELECT status FROM orders WHERE id = $1 FOR UPDATE`
+// lockOrderQuery takes FOR NO KEY UPDATE: it serialises status recomputation of one order but does
+// not block the KEY SHARE locks that history inserts take through their foreign key.
+const lockOrderQuery = `SELECT status FROM orders WHERE id = $1 FOR NO KEY UPDATE`
 
 const sellerStatusesQuery = `SELECT status FROM seller_orders WHERE order_id = $1 ORDER BY id`
 

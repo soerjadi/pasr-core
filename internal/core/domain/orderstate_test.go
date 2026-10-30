@@ -178,3 +178,18 @@ func TestFormatOrderNumber_WIBDateBoundary(t *testing.T) {
 		t.Errorf("wide seq: got %s", got)
 	}
 }
+
+func TestActionTarget(t *testing.T) {
+	want := map[Action]OrderStatus{
+		ActionAccept: OrderSellerProcessing, ActionReject: OrderCancelled, ActionReady: OrderReadyForPickup,
+		ActionComplete: OrderCompleted, ActionCancel: OrderCancelled, ActionExpire: OrderCancelled,
+	}
+	for a, w := range want {
+		if got, ok := ActionTarget(a); !ok || got != w {
+			t.Errorf("%s: %s %v, want %s", a, got, ok, w)
+		}
+	}
+	if _, ok := ActionTarget("NOPE"); ok {
+		t.Error("unknown action has a target")
+	}
+}

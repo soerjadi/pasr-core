@@ -17,6 +17,7 @@ import (
 	idemrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/idempotency"
 	notificationrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/notification"
 	orderrepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/order"
+	storerepo "github.com/oemah/nusantara/core/internal/adapters/secondary/repository/store"
 	"github.com/oemah/nusantara/core/internal/core/domain"
 	"github.com/oemah/nusantara/core/internal/core/ports/services"
 	"github.com/oemah/nusantara/core/internal/core/services/notify"
@@ -52,7 +53,7 @@ func setupOrders(t *testing.T) *ofx {
 	notifier := notify.NewService(notificationrepo.NewNotificationRepository(exec), devicerepo.NewDeviceRepository(exec),
 		testapp.NewFakePusher(), exec)
 	svc := ordering.NewService(cartrepo.NewCartRepository(exec), orderrepo.NewOrderRepository(exec),
-		idemrepo.NewIdempotencyRepository(exec), exec, notifier, fakeStorage{}, clock,
+		idemrepo.NewIdempotencyRepository(exec), storerepo.NewStoreRepository(exec), exec, notifier, fakeStorage{}, clock,
 		ordering.Config{AcceptWindow: 10 * time.Minute, Location: wib})
 	return &ofx{pool: pool, svc: svc, clock: clock}
 }

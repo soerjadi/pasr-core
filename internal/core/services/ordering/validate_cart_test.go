@@ -45,7 +45,7 @@ func product(id int64, st domain.CartStore, price int64, stock int32) domain.Car
 
 func run(t *testing.T, f *fakeCarts, lines ...domain.CartLineInput) (domain.CartValidation, error) {
 	t.Helper()
-	return ordering.NewService(f, nil, nil, nil, nil, fakeStorage{}, nil, ordering.Config{}).ValidateCart(context.Background(), lines)
+	return ordering.NewService(f, nil, nil, nil, nil, nil, fakeStorage{}, nil, ordering.Config{}).ValidateCart(context.Background(), lines)
 }
 
 func in(id int64, q int32) domain.CartLineInput {

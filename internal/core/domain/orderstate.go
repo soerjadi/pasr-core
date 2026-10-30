@@ -51,6 +51,12 @@ func Transition(from OrderStatus, a Action, actor Actor) (OrderStatus, error) {
 		fmt.Sprintf("order cannot be %s from status %s", a, from))
 }
 
+// ActionTarget is the status a seller-order has after a; false for an unknown action.
+func ActionTarget(a Action) (OrderStatus, bool) {
+	r, ok := transitions[a]
+	return r.to, ok
+}
+
 func contains(ss []string, s string) bool {
 	for _, v := range ss {
 		if v == s {

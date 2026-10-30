@@ -36,7 +36,7 @@ type OrderRepository interface {
 	// RestoreStock gives every item's quantity back to its product with a plain UPDATE, after
 	// locking the products in ascending id order. An OUT_OF_STOCK product with stock again turns AVAILABLE.
 	RestoreStock(ctx context.Context, sellerOrderID int64) error
-	// LockOrderStatuses locks the order row (FOR UPDATE) and returns its stored status and the
+	// LockOrderStatuses locks the order row (FOR NO KEY UPDATE) and returns its stored status and the
 	// statuses of all its seller-orders, read after the lock was granted.
 	LockOrderStatuses(ctx context.Context, orderID int64) (domain.OrderStatus, []domain.OrderStatus, error)
 	// SetOrderStatus stores the order status and appends an order-level history row.
