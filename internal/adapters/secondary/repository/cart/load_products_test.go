@@ -13,7 +13,7 @@ import (
 func TestLoadProducts_ReturnsDeletedHiddenAndStoreState(t *testing.T) {
 	pool := pgtest.Pool(t)
 	r := NewCartRepository(db.NewExecutor(pool))
-	store, _ := seed.Store(t, pool, seed.StoreOpts{Name: "Bu Siti", Photo: true, WhatsApp: "+6281234567889"})
+	store, owner := seed.Store(t, pool, seed.StoreOpts{Name: "Bu Siti", Photo: true, WhatsApp: "+6281234567889"})
 	live := seed.Product(t, pool, seed.ProductOpts{StoreID: store, Name: "Tempe", Price: 15000, Stock: 7, Images: 2})
 	gone := seed.Product(t, pool, seed.ProductOpts{StoreID: store, Deleted: true})
 	hidden := seed.Product(t, pool, seed.ProductOpts{StoreID: store, Status: "HIDDEN"})
@@ -32,7 +32,7 @@ func TestLoadProducts_ReturnsDeletedHiddenAndStoreState(t *testing.T) {
 	if p.Name != "Tempe" || p.Price != 15000 || p.Stock != 7 || p.Image == nil || p.Deleted {
 		t.Fatalf("live = %+v", p)
 	}
-	if p.Store.ID != store || p.Store.Name != "Bu Siti" || p.Store.Avatar == nil || p.Store.IsOpen ||
+	if p.Store.ID != store || p.Store.OwnerID != owner || p.Store.Name != "Bu Siti" || p.Store.Avatar == nil || p.Store.IsOpen ||
 		p.Store.Status != "VERIFIED" || p.Store.WhatsApp != "+6281234567889" || p.Store.PickupAddress == "" {
 		t.Fatalf("store = %+v", p.Store)
 	}

@@ -4,6 +4,7 @@ package domain
 // pickup snapshot fields. Avatar is object keys, not URLs.
 type CartStore struct {
 	ID            int64
+	OwnerID       int64
 	Name          string
 	Avatar        *ImageKeys
 	Location      string

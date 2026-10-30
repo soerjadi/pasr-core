@@ -31,7 +31,7 @@ func (r *cartRepository) LoadProducts(ctx context.Context, ids []int64, lock boo
 		s := &p.Store
 		if err := rows.Scan(&p.ID, &p.Name, &p.Price, &p.Stock, &p.Status, &p.Deleted, &p.Image,
 			&s.ID, &s.Name, &s.Avatar, &s.Location, &s.Rating, &s.RatingCount, &s.PickupAddress,
-			&s.Hours, &s.WhatsApp, &s.Status, &s.IsOpen); err != nil {
+			&s.Hours, &s.WhatsApp, &s.Status, &s.IsOpen, &s.OwnerID); err != nil {
 			tracer.RecordError(span, err)
 			return nil, fmt.Errorf("cart.LoadProducts scan: %w", err)
 		}
