@@ -64,11 +64,9 @@ func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
 	if f.SellerID, ok = queryInt(w, r, "sellerId"); !ok {
 		return
 	}
-	limit, ok := queryInt(w, r, "limit")
-	if !ok {
+	if f.Limit, ok = rest.Limit(w, r); !ok {
 		return
 	}
-	f.Limit = int(min(limit, 1000))
 	if raw := q.Get("featured"); raw != "" {
 		b, err := strconv.ParseBool(raw)
 		if err != nil {
@@ -118,11 +116,11 @@ func (h *Handler) ListSellerReviews(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	limit, ok := queryInt(w, r, "limit")
+	limit, ok := rest.Limit(w, r)
 	if !ok {
 		return
 	}
-	page, err := h.catalog.ListSellerReviews(r.Context(), id, r.URL.Query().Get("cursor"), int(min(limit, 1000)))
+	page, err := h.catalog.ListSellerReviews(r.Context(), id, r.URL.Query().Get("cursor"), limit)
 	if err != nil {
 		rest.WriteServiceError(w, r, err)
 		return

@@ -26,7 +26,7 @@ func NewHandler(admin services.AdminService) *Handler {
 }
 
 func (h *Handler) ListStores(w http.ResponseWriter, r *http.Request) {
-	limit, ok := limitParam(w, r)
+	limit, ok := rest.Limit(w, r)
 	if !ok {
 		return
 	}
@@ -124,7 +124,7 @@ func (h *Handler) DeleteCategory(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ListAdCampaigns(w http.ResponseWriter, r *http.Request) {
-	limit, ok := limitParam(w, r)
+	limit, ok := rest.Limit(w, r)
 	if !ok {
 		return
 	}
@@ -190,7 +190,7 @@ type NoteRequest struct {
 }
 
 func (h *Handler) ListOrders(w http.ResponseWriter, r *http.Request) {
-	limit, ok := limitParam(w, r)
+	limit, ok := rest.Limit(w, r)
 	if !ok {
 		return
 	}
@@ -284,20 +284,6 @@ func pathID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 		return 0, false
 	}
 	return id, true
-}
-
-// limitParam parses the optional limit query parameter; the service clamps it to 1..50.
-func limitParam(w http.ResponseWriter, r *http.Request) (int, bool) {
-	raw := r.URL.Query().Get("limit")
-	if raw == "" {
-		return 0, true
-	}
-	n, err := strconv.Atoi(raw)
-	if err != nil || n < 0 {
-		rest.WriteError(w, http.StatusBadRequest, "VALIDATION_FAILED", "limit must be a positive integer")
-		return 0, false
-	}
-	return min(n, 1000), true
 }
 
 // decode reads a JSON body; unknown fields are ignored like everywhere else in the API.

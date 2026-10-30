@@ -43,14 +43,9 @@ func (h *Handler) ListFavorites(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	limit := 0
-	if raw := r.URL.Query().Get("limit"); raw != "" {
-		n, err := strconv.Atoi(raw)
-		if err != nil || n < 0 {
-			rest.WriteError(w, http.StatusBadRequest, "VALIDATION_FAILED", "limit must be a positive integer")
-			return
-		}
-		limit = min(n, 1000)
+	limit, ok := rest.Limit(w, r)
+	if !ok {
+		return
 	}
 	page, err := h.catalog.ListFavorites(r.Context(), p.UserID, r.URL.Query().Get("cursor"), limit)
 	if err != nil {

@@ -47,14 +47,9 @@ func (h *Handler) ListProducts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	q := r.URL.Query()
-	limit := 0
-	if raw := q.Get("limit"); raw != "" {
-		n, err := strconv.Atoi(raw)
-		if err != nil || n < 0 {
-			rest.WriteError(w, http.StatusBadRequest, "VALIDATION_FAILED", "limit must be a positive integer")
-			return
-		}
-		limit = n
+	limit, ok := rest.Limit(w, r)
+	if !ok {
+		return
 	}
 	out, err := h.store.ListMyProducts(r.Context(), p.UserID, q.Get("status"), q.Get("cursor"), limit)
 	if err != nil {

@@ -50,14 +50,9 @@ func (h *Handler) ListOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	q := r.URL.Query()
-	limit := 0
-	if raw := q.Get("limit"); raw != "" {
-		n, err := strconv.Atoi(raw)
-		if err != nil || n < 0 {
-			rest.WriteError(w, http.StatusBadRequest, "VALIDATION_FAILED", "limit must be a positive integer")
-			return
-		}
-		limit = min(n, 1000)
+	limit, ok := rest.Limit(w, r)
+	if !ok {
+		return
 	}
 	page, err := h.ordering.ListOrders(r.Context(), p.UserID, q.Get("tab"), q.Get("cursor"), limit)
 	if err != nil {
