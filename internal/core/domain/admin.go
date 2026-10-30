@@ -29,3 +29,25 @@ type AdminStoreQuery struct {
 	BeforeID int64
 	Limit    int
 }
+
+// AdminProductPatch matches the AdminProductPatch schema: nil fields are left unchanged. An empty
+// HalalCertNo clears the certificate number.
+type AdminProductPatch struct {
+	Featured      *bool          `json:"featured"`
+	HalalVerified *bool          `json:"halalVerified"`
+	HalalCertNo   *string        `json:"halalCertNo"`
+	Status        *ProductStatus `json:"status"`
+}
+
+// AdminProduct matches the AdminProduct schema: a product with the operator-controlled fields.
+type AdminProduct struct {
+	ID            int64         `json:"id"`
+	StoreID       int64         `json:"storeId"`
+	Name          string        `json:"name"`
+	Price         int64         `json:"price"`
+	Stock         int32         `json:"stock"`
+	Status        ProductStatus `json:"status"`
+	Featured      bool          `json:"featured"`
+	HalalVerified bool          `json:"halalVerified"`
+	HalalCertNo   *string       `json:"halalCertNo"`
+}

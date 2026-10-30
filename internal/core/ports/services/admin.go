@@ -22,4 +22,9 @@ type AdminService interface {
 	// ReinstateStore moves a SUSPENDED store back to VERIFIED. An already VERIFIED store is returned
 	// unchanged; a PENDING one is 409 STORE_STATE_INVALID, since it was never verified.
 	ReinstateStore(ctx context.Context, id int64) (domain.AdminStore, error)
+
+	// UpdateProduct applies the non-nil fields to a non-deleted product of any store (else
+	// domain.ErrNotFound). status must be AVAILABLE, OUT_OF_STOCK or HIDDEN, and AVAILABLE needs
+	// stock; halalCertNo is trimmed, at most 100 characters, and "" clears it.
+	UpdateProduct(ctx context.Context, id int64, patch domain.AdminProductPatch) (domain.AdminProduct, error)
 }

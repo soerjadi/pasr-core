@@ -4,6 +4,7 @@ package admin
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strconv"
 
@@ -11,6 +12,8 @@ import (
 	"github.com/oemah/nusantara/core/internal/core/domain"
 	"github.com/oemah/nusantara/core/internal/core/ports/services"
 )
+
+const maxBodyBytes = 16 << 10
 
 type Handler struct {
 	admin services.AdminService
@@ -59,6 +62,23 @@ func (h *Handler) storeAction(w http.ResponseWriter, r *http.Request, fn func(co
 	rest.WriteJSON(w, http.StatusOK, out)
 }
 
+func (h *Handler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathID(w, r)
+	if !ok {
+		return
+	}
+	var req domain.AdminProductPatch
+	if !decode(w, r, &req) {
+		return
+	}
+	out, err := h.admin.UpdateProduct(r.Context(), id, req)
+	if err != nil {
+		rest.WriteServiceError(w, r, err)
+		return
+	}
+	rest.WriteJSON(w, http.StatusOK, out)
+}
+
 // pathID parses the {id} path value; a malformed id can never match a row, so it is a 404.
 func pathID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
@@ -81,4 +101,14 @@ func limitParam(w http.ResponseWriter, r *http.Request) (int, bool) {
 		return 0, false
 	}
 	return min(n, 1000), true
+}
+
+// decode reads a JSON body; unknown fields are ignored like everywhere else in the API.
+func decode(w http.ResponseWriter, r *http.Request, into any) bool {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
+	if err := json.NewDecoder(r.Body).Decode(into); err != nil {
+		rest.WriteServiceError(w, r, domain.NewError(domain.ErrValidationFailed, "VALIDATION_FAILED", "invalid request body"))
+		return false
+	}
+	return true
 }

@@ -122,3 +122,15 @@ func buildListOwnedQuery(q domain.SellerProductQuery) (string, []any) {
 	b.WriteString(fmt.Sprintf(" ORDER BY p.id DESC LIMIT $%d", len(args)))
 	return b.String(), args
 }
+
+const (
+	adminColumns = `p.id, p.store_id, p.name, p.price, p.stock, p.status, p.featured, p.halal_verified, p.halal_cert_no`
+	// getAdminForUpdateQuery locks a non-deleted product of any store; the seller's patch takes the
+	// same row lock, so the two never overwrite each other.
+	getAdminForUpdateQuery = `SELECT ` + adminColumns + `
+		FROM products p WHERE p.id = $1 AND p.deleted_at IS NULL FOR UPDATE`
+	updateAdminQuery = `
+		UPDATE products SET status = $2, featured = $3, halal_verified = $4, halal_cert_no = $5
+		WHERE id = $1 AND deleted_at IS NULL
+	`
+)

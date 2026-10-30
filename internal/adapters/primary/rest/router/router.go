@@ -141,5 +141,6 @@ func AdminRoutes(a *admin.Handler) []Route {
 		{"POST /v1/admin/stores/{id}/verify", a.VerifyStore},
 		{"POST /v1/admin/stores/{id}/suspend", a.SuspendStore},
 		{"POST /v1/admin/stores/{id}/reinstate", a.ReinstateStore},
+		{"PATCH /v1/admin/products/{id}", a.UpdateProduct},
 	}
 }

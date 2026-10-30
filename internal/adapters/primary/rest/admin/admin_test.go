@@ -85,6 +85,7 @@ var adminRoutes = []struct{ method, path, pattern string }{
 	{http.MethodPost, "/v1/admin/stores/1/verify", "POST /v1/admin/stores/{id}/verify"},
 	{http.MethodPost, "/v1/admin/stores/1/suspend", "POST /v1/admin/stores/{id}/suspend"},
 	{http.MethodPost, "/v1/admin/stores/1/reinstate", "POST /v1/admin/stores/{id}/reinstate"},
+	{http.MethodPatch, "/v1/admin/products/1", "PATCH /v1/admin/products/{id}"},
 }
 
 func TestAdmin_RequiresOperatorRole(t *testing.T) {

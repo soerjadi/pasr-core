@@ -196,9 +196,10 @@ func New(ctx context.Context, cfg *config.Config, opts ...Options) (*App, error)
 	adsService := adssvc.NewService(adrepo.NewAdRepository(exec), opt.Clock)
 
 	adminService := adminsvc.NewService(adminsvc.Deps{
-		Stores: storerepo.NewStoreRepository(exec),
-		Notify: notify,
-		Tx:     exec,
+		Stores:   storerepo.NewStoreRepository(exec),
+		Products: productrepo.NewProductRepository(exec),
+		Notify:   notify,
+		Tx:       exec,
 	})
 
 	files, _ := opt.Storage.(media.FileServer) // only the local driver serves its own files

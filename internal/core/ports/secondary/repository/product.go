@@ -31,4 +31,10 @@ type ProductRepository interface {
 	SoftDelete(ctx context.Context, storeID, id int64) (bool, error)
 	// RemoveFavorites deletes every favorite of the product.
 	RemoveFavorites(ctx context.Context, productID int64) error
+
+	// LockAdmin reads a non-deleted product of any store FOR UPDATE (call it inside a transaction),
+	// or returns nil, nil.
+	LockAdmin(ctx context.Context, id int64) (*domain.AdminProduct, error)
+	// UpdateAdmin writes status, featured, halal_verified and halal_cert_no of a non-deleted product.
+	UpdateAdmin(ctx context.Context, p domain.AdminProduct) error
 }
