@@ -91,6 +91,7 @@ func New(h Handlers, allowedOrigins []string, ping func(*http.Request) error) ht
 		mux.Handle("POST /v1/orders", h.Authenticate(http.HandlerFunc(h.Order.CreateOrder)))
 		mux.Handle("GET /v1/orders", h.Authenticate(http.HandlerFunc(h.Order.ListOrders)))
 		mux.Handle("GET /v1/orders/{orderId}", h.Authenticate(http.HandlerFunc(h.Order.GetOrder)))
+		mux.Handle("POST /v1/order-items/{orderItemId}/reviews", h.Authenticate(http.HandlerFunc(h.Order.SubmitReview)))
 	}
 
 	if h.Social != nil {
